@@ -22,8 +22,8 @@ interface Props {
 const PORTAL_LINKS = [
   { label: "Customer", path: "/user/login" },
   { label: "Merchant", path: "/merchant/login" },
-  { label: "Rider", path: "/rider/login" },
-  { label: "Admin", path: "/admin/login" },
+  { label: "Rider", path: "/merchant/login" },
+  { label: "Admin", path: "/login" },
 ];
 
 
