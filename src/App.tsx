@@ -31,6 +31,7 @@ import Notifications from "@/pages/admin/Notifications";
 import SupportTickets from "@/pages/admin/SupportTickets";
 import AuditLogs from "@/pages/admin/AuditLogs";
 import Settings from "@/pages/admin/Settings";
+import Admins from "@/pages/admin/Admins";
 
 import UserLayout from "@/components/user/UserLayout";
 import UserLogin from "@/pages/user/UserLogin";
@@ -136,6 +137,7 @@ const App = () => (
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/support-tickets" element={<SupportTickets />} />
               <Route path="/audit-logs" element={<AuditLogs />} />
+              <Route path="/admins" element={<Admins />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
 

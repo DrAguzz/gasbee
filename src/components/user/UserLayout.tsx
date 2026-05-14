@@ -11,10 +11,10 @@ export default function UserLayout() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background pb-28">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur">
-        <div className="flex items-center gap-2">
+        <button onClick={() => nav("/user/home")} className="flex items-center gap-2">
           <Logo size={32} />
           <span className="font-bold">Gasbee</span>
-        </div>
+        </button>
         <Button variant="ghost" size="icon" className="relative" onClick={() => nav("/user/cart")}>
           <ShoppingCart className="h-5 w-5" />
           {count > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">{count}</span>}

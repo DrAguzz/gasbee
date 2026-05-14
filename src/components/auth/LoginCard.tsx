@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { homeForRoles, AppRole } from "@/hooks/useAuth";
 import authBg from "@/assets/auth-bg.png";
+import { Eye, EyeOff } from "lucide-react";
 
 interface Props {
   title: string;
@@ -16,21 +17,15 @@ interface Props {
   expectedRoles?: AppRole[];
   showSignup?: boolean;
   signupLink?: string;
-  showDevPanel?: boolean;
 }
 
-const PORTAL_LINKS = [
-  { label: "Customer", path: "/user/login" },
-  { label: "Merchant", path: "/merchant/login" },
-  { label: "Rider", path: "/merchant/login" },
-  { label: "Admin", path: "/login" },
-];
 
+export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLink }: Props) => {
 
-export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLink, showDevPanel = true }: Props) => {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,34 +69,37 @@ export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLi
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
         </form>
         {showSignup && signupLink && (
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            New here? <a href={signupLink} className="font-medium text-primary hover:underline">Create an account</a>
+          <p className="mt-4 text-center text-sm text-foreground/90">
+            New here?{" "}
+            <a
+              href={signupLink}
+              className="font-semibold text-foreground underline underline-offset-4 hover:text-foreground/80"
+            >
+              Create an account
+            </a>
           </p>
-        )}
-
-        {showDevPanel && (
-          <div className="mt-6 space-y-3 rounded-lg border border-dashed border-white/20 bg-background/40 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dev · Portals</span>
-              <span className="text-[10px] text-muted-foreground">temporary</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {PORTAL_LINKS.map((p) => (
-                <a
-                  key={p.path}
-                  href={p.path}
-                  className="rounded-md border border-white/10 bg-card/50 px-2 py-1.5 text-center text-xs font-medium hover:bg-primary/20 hover:text-primary transition-colors"
-                >
-                  {p.label}
-                </a>
-              ))}
-            </div>
-          </div>
         )}
       </Card>
     </div>

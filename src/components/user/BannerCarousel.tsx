@@ -14,8 +14,8 @@ export function BannerCarousel({ banners }: { banners: Banner[] }) {
   if (banners.length === 0) return null;
   const cur = banners[idx];
   const inner = (
-    <Card className="overflow-hidden">
-      <img src={cur.image_url} alt={cur.title ?? ""} className="h-36 w-full object-cover transition-opacity duration-500" />
+    <Card className="overflow-hidden bg-muted">
+      <img src={cur.image_url} alt={cur.title ?? ""} className="h-auto w-full object-contain transition-opacity duration-500 sm:h-36 sm:object-cover" />
     </Card>
   );
 
