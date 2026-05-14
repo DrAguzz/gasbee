@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Gasbee Rider</string>
+    <string name="title_activity_main">Gasbee Rider</string>
+    <string name="package_name">com.gasbee.rider</string>
+    <string name="custom_url_scheme">com.gasbee.rider</string>
+</resources>
