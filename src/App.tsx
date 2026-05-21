@@ -36,6 +36,7 @@ import Admins from "@/pages/admin/Admins";
 import UserLayout from "@/components/user/UserLayout";
 import UserLogin from "@/pages/user/UserLogin";
 import UserRegister from "@/pages/user/UserRegister";
+import UserResetPassword from "@/pages/user/UserResetPassword";
 import UserHome from "@/pages/user/UserHome";
 import UserProducts from "@/pages/user/UserProducts";
 import UserMerchants from "@/pages/user/UserMerchants";
@@ -144,6 +145,7 @@ const App = () => (
             {/* ===== USER (BUYER) ===== */}
             <Route path="/user/login" element={<UserLogin />} />
             <Route path="/user/register" element={<UserRegister />} />
+            <Route path="/reset-password" element={<UserResetPassword />} />
             <Route element={<ProtectedRoute allow={CUSTOMER_ROLES} loginPath="/user/login"><UserLayout /></ProtectedRoute>}>
               <Route path="/user" element={<Navigate to="/user/home" replace />} />
               <Route path="/user/home" element={<UserHome />} />

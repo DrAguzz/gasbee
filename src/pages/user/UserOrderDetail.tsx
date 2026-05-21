@@ -5,7 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { toast } from "sonner";
-import { Phone, Navigation, Clock, CheckCircle2, Package, Truck, Home } from "lucide-react";
+import { Phone, Navigation, Clock, CheckCircle2, Package, Truck, Home, Download } from "lucide-react";
+import { downloadReceipt } from "@/lib/receipt";
 import { MapPicker } from "@/components/MapPicker";
 import { OrderChat } from "@/components/OrderChat";
 import { OrderRating } from "@/components/user/OrderRating";
@@ -207,11 +208,77 @@ export default function UserOrderDetail() {
 
       {o.status === "delivered" && <OrderRating orderId={o.id} hasRider={!!o.rider_id} />}
 
-      <div className="flex gap-2">
+      {o.status === "cancelled" && o.rejected_at && o.failure_reason && (
+        <Card className="space-y-3 border-destructive/40 bg-destructive/5 p-4">
+          <div>
+            <div className="text-sm font-semibold text-destructive">Order rejected by merchant</div>
+            <p className="mt-1 text-sm">{o.failure_reason}</p>
+          </div>
+          {o.payment_status === "paid" && (
+            <RejectedOptions order={o} />
+          )}
+        </Card>
+      )}
+
+      <div className="flex flex-wrap gap-2">
         {["pending","confirmed"].includes(o.status) && <Button variant="destructive" className="flex-1" onClick={cancel}>Cancel</Button>}
+        {o.payment_status === "paid" && (
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => downloadReceipt(o.id).catch((e) => toast.error(e.message))}
+          >
+            <Download className="mr-1 h-4 w-4" />Download receipt
+          </Button>
+        )}
         {o.payment_status === "paid" && o.status !== "cancelled" && (
           <Button asChild variant="outline" className="flex-1"><Link to={`/user/refund?order=${o.id}`}>Request refund</Link></Button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function RejectedOptions({ order }: { order: any }) {
+  const [credit, setCredit] = useState<any>(null);
+  useEffect(() => {
+    supabase.from("order_credits").select("*").eq("source_order_id", order.id).maybeSingle().then(({ data }) => setCredit(data));
+  }, [order.id]);
+
+  if (!credit) return <p className="text-xs text-muted-foreground">Preparing your store credit…</p>;
+  if (credit.status === "used") {
+    return <p className="text-xs text-muted-foreground">Credit of RM {Number(credit.amount).toFixed(2)} has been applied to another order.</p>;
+  }
+  if (credit.status === "refunded") {
+    return <p className="text-xs text-muted-foreground">Full refund of RM {Number(credit.amount).toFixed(2)} is being processed.</p>;
+  }
+  const requestRefund = async () => {
+    const { error: e1 } = await supabase.from("refunds").insert({
+      order_id: order.id,
+      requester_id: order.customer_id,
+      reason: "Merchant rejected order — full refund requested",
+      reason_category: "merchant_rejected",
+      amount: order.total_amount,
+      refund_amount: order.total_amount,
+      status: "requested",
+    });
+    if (e1) { toast.error(e1.message); return; }
+    const { error: e2 } = await supabase.from("order_credits").update({ status: "refunded", notes: "User chose full refund" }).eq("id", credit.id);
+    if (e2) { toast.error(e2.message); return; }
+    toast.success("Refund requested. Admin will process shortly.");
+    setCredit({ ...credit, status: "refunded" });
+  };
+  return (
+    <div className="space-y-2">
+      <div className="rounded-md bg-background/60 p-3 text-sm">
+        <div className="font-semibold">Store credit available: RM {Number(credit.amount).toFixed(2)}</div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Place a new order with another merchant — your credit auto-applies at checkout. If the new total is higher, you only pay the difference. If lower, admin will refund the remainder.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild className="flex-1"><Link to="/user/merchants">Order from another merchant</Link></Button>
+        <Button variant="outline" className="flex-1" onClick={requestRefund}>Request full refund</Button>
       </div>
     </div>
   );

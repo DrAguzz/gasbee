@@ -10,6 +10,7 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { MapPicker } from "@/components/MapPicker";
 import { Crosshair } from "lucide-react";
 import { toast } from "sonner";
+import { getMyLocation } from "@/lib/geolocation";
 
 export default function MerchantProfile() {
   const { merchant, refresh } = useMerchantContext();
@@ -19,18 +20,20 @@ export default function MerchantProfile() {
   if (!form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) { toast.error("Geolocation not supported"); return; }
-    navigator.geolocation.getCurrentPosition(
-      (p) => setForm({ ...form, latitude: p.coords.latitude, longitude: p.coords.longitude }),
-      () => toast.error("Could not get location")
-    );
+    getMyLocation({
+      onSuccess: (latitude, longitude) =>
+        setForm({ ...form, latitude, longitude }),
+    });
   };
 
   const save = async () => {
+    const radius = Number(form.delivery_radius_km);
+    if (!Number.isFinite(radius) || radius <= 0) { toast.error("Delivery radius must be greater than 0 km"); return; }
     const { error } = await supabase.from("merchants").update({
       name: form.name, description: form.description, phone: form.phone, email: form.email,
       address: form.address, city: form.city, state: form.state, postcode: form.postcode, logo_url: form.logo_url,
       latitude: form.latitude, longitude: form.longitude,
+      delivery_radius_km: radius,
     }).eq("id", form.id);
     if (error) toast.error(error.message); else { toast.success("Saved"); refresh(); }
   };
@@ -60,8 +63,21 @@ export default function MerchantProfile() {
             <Label>Pickup location (used for delivery fee distance)</Label>
             <Button type="button" size="sm" variant="outline" onClick={useMyLocation}><Crosshair className="mr-1 h-3 w-3" />Use current</Button>
           </div>
-          <MapPicker lat={form.latitude} lng={form.longitude} onChange={(la, ln) => setForm({ ...form, latitude: la, longitude: ln })} height={300} />
+          <MapPicker lat={form.latitude} lng={form.longitude} onChange={(la, ln) => setForm({ ...form, latitude: la, longitude: ln })} height={300} radiusKm={Number(form.delivery_radius_km) || 10} />
           {form.latitude != null && <p className="mt-1 text-[11px] text-muted-foreground">Pinned: {Number(form.latitude).toFixed(5)}, {Number(form.longitude).toFixed(5)}</p>}
+        </div>
+        <div>
+          <Label>Delivery radius (km)</Label>
+          <Input
+            type="number"
+            min={1}
+            step={0.5}
+            value={form.delivery_radius_km ?? 10}
+            onChange={(e) => setForm({ ...form, delivery_radius_km: e.target.value })}
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Customers outside this distance from your pickup location won't be able to order from your shop.
+          </p>
         </div>
         <Button onClick={save}>Save</Button>
       </Card>

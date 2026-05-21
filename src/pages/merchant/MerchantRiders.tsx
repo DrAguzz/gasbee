@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { ImageUpload } from "@/components/ImageUpload";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -125,7 +126,9 @@ export default function MerchantRiders() {
                 </td>
                 <td className="p-3"><StatusBadge value={r.status} /></td>
                 <td className="p-3 text-right">
-                  <Button size="sm" variant={r.is_active ? "default" : "outline"} onClick={() => toggle(r)} className="mr-2">{r.is_active ? "Active" : "Inactive"}</Button>
+                  <span className="mr-3 inline-flex items-center gap-2 align-middle">
+                    <Switch checked={!!r.is_active} onCheckedChange={() => toggle(r)} className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-muted-foreground/40" />
+                  </span>
                   <Button size="icon" variant="ghost" onClick={() => setEditing(r)}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => del(r)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </td>

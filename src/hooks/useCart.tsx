@@ -10,6 +10,9 @@ export type CartItem = {
   unit_price: number;
   quantity: number;
   category_slug?: string | null;
+  // Breakdown for "new cylinder" purchases: cylinder + refill priced separately
+  new_cylinder_price?: number | null;
+  refill_price?: number | null;
 };
 
 const KEY = "gasbee_cart_v1";

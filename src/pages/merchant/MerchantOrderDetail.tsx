@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 const NEXT: Record<string, string> = {
@@ -20,6 +22,8 @@ export default function MerchantOrderDetail() {
   const [items, setItems] = useState<any[]>([]);
   const [riders, setRiders] = useState<any[]>([]);
   const [riderId, setRiderId] = useState<string>("");
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   const load = async () => {
     if (!id) return;
@@ -35,20 +39,32 @@ export default function MerchantOrderDetail() {
     supabase.from("riders").select("id,full_name,phone,is_active").eq("merchant_id", merchant.id).eq("is_active", true).then(({ data }) => setRiders(data ?? []));
   }, [merchant?.id]);
 
+  // Live updates on this order (e.g. rider accepts, status changes)
+  useEffect(() => {
+    if (!id) return;
+    const ch = supabase
+      .channel(`order-${id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${id}` }, (p) => {
+        const nu: any = p.new; const ol: any = p.old;
+        setO((prev: any) => prev ? { ...prev, ...nu } : nu);
+        if (nu.status === "rider_accepted" && ol.status !== "rider_accepted") {
+          toast.success("Rider accepted the job");
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [id]);
+
   const assignRider = async (rid: string) => {
     const { error } = await supabase.from("orders").update({
       rider_id: rid || null,
       assigned_at: rid ? new Date().toISOString() : null,
-      status: rid && o.status === "preparing" ? "assigned" : o.status,
+      status: rid && (o.status === "accepted" || o.status === "preparing") ? "assigned" : o.status,
     }).eq("id", o.id);
     if (error) { toast.error(error.message); return; }
     if (rid) {
       const r = riders.find((x) => x.id === rid);
-      const { data: rider } = await supabase.from("riders").select("user_id").eq("id", rid).maybeSingle();
-      if (rider?.user_id) {
-        await supabase.from("notifications").insert({ user_id: rider.user_id, title: `New job ${o.code}`, body: `Pickup at merchant`, type: "order", link: `/merchant/rider/jobs/${o.id}` });
-      }
-      toast.success(`Assigned to ${r?.full_name}`);
+      toast.success(`Assigned to ${r?.full_name}. Waiting for rider to accept…`);
     } else toast.success("Unassigned");
     load();
   };
@@ -65,9 +81,12 @@ export default function MerchantOrderDetail() {
     if (error) toast.error(error.message); else { toast.success("Updated"); load(); }
   };
   const reject = async () => {
-    const { error } = await supabase.from("orders").update({ status: "cancelled", rejected_at: new Date().toISOString(), failure_reason: "Rejected by merchant" }).eq("id", o.id);
-    if (error) toast.error(error.message); else { toast.success("Rejected"); load(); }
+    const reason = rejectReason.trim();
+    if (reason.length < 3) { toast.error("Please enter a rejection reason"); return; }
+    const { error } = await supabase.from("orders").update({ status: "cancelled", rejected_at: new Date().toISOString(), failure_reason: reason }).eq("id", o.id);
+    if (error) toast.error(error.message); else { toast.success("Rejected"); setRejectOpen(false); setRejectReason(""); load(); }
   };
+
 
   return (
     <div className="space-y-4">
@@ -98,6 +117,16 @@ export default function MerchantOrderDetail() {
           <Button onClick={() => assignRider(riderId)}>{o.rider_id ? "Update" : "Assign"}</Button>
         </div>
         {riders.length === 0 && <p className="mt-2 text-xs text-muted-foreground">No active riders. Add riders in the Riders page.</p>}
+        {o.rider_id && (() => {
+          const ar = riders.find((x) => x.id === o.rider_id);
+          const accepted = ["rider_accepted","arrived_at_merchant","picked_up","on_delivery","arrived_at_customer","delivered"].includes(o.status);
+          return (
+            <div className={`mt-3 rounded border p-3 text-sm ${accepted ? "border-primary bg-primary/5" : "border-amber-500/40 bg-amber-500/10"}`}>
+              <div className="font-semibold">{ar ? `${ar.full_name} · ${ar.phone}` : "Rider"}</div>
+              <div className="text-xs">{accepted ? "✓ Rider has accepted the job" : "⏳ Waiting for rider to accept…"}</div>
+            </div>
+          );
+        })()}
       </Card>
 
       <Card>
@@ -118,9 +147,28 @@ export default function MerchantOrderDetail() {
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        {o.status === "pending" && <Button variant="destructive" onClick={reject}>Reject</Button>}
+        {o.status === "pending" && <Button variant="destructive" onClick={() => setRejectOpen(true)}>Reject</Button>}
         {NEXT[o.status] && <Button onClick={() => updateStatus(NEXT[o.status])}>Mark as {NEXT[o.status].replace(/_/g, " ")}</Button>}
       </div>
+
+      {o.failure_reason && (o.status === "cancelled" || o.rejected_at) && (
+        <Card className="p-4 border-destructive/40">
+          <h2 className="mb-1 font-semibold text-destructive">Rejection reason</h2>
+          <p className="text-sm">{o.failure_reason}</p>
+        </Card>
+      )}
+
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Reject order</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Please provide a reason for rejecting this order. The customer will see this note.</p>
+          <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="e.g. Out of stock, outside delivery area…" rows={4} />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRejectOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={reject}>Confirm reject</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

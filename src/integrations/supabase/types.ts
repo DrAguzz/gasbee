@@ -283,6 +283,93 @@ export type Database = {
         }
         Relationships: []
       }
+      email_send_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          recipient_email?: string
+          status?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
+      email_send_state: {
+        Row: {
+          auth_email_ttl_minutes: number
+          batch_size: number
+          id: number
+          retry_after_until: string | null
+          send_delay_ms: number
+          transactional_email_ttl_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          auth_email_ttl_minutes?: number
+          batch_size?: number
+          id?: number
+          retry_after_until?: string | null
+          send_delay_ms?: number
+          transactional_email_ttl_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          auth_email_ttl_minutes?: number
+          batch_size?: number
+          id?: number
+          retry_after_until?: string | null
+          send_delay_ms?: number
+          transactional_email_ttl_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       inventory_movements: {
         Row: {
           created_at: string
@@ -397,6 +484,7 @@ export type Database = {
           city: string | null
           commission_rate: number
           created_at: string
+          delivery_radius_km: number
           description: string | null
           documents: Json | null
           email: string | null
@@ -420,6 +508,7 @@ export type Database = {
           city?: string | null
           commission_rate?: number
           created_at?: string
+          delivery_radius_km?: number
           description?: string | null
           documents?: Json | null
           email?: string | null
@@ -443,6 +532,7 @@ export type Database = {
           city?: string | null
           commission_rate?: number
           created_at?: string
+          delivery_radius_km?: number
           description?: string | null
           documents?: Json | null
           email?: string | null
@@ -492,6 +582,45 @@ export type Database = {
           link?: string | null
           title?: string
           type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      order_credits: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          leftover_amount: number
+          notes: string | null
+          source_order_id: string
+          status: string
+          updated_at: string
+          used_order_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          leftover_amount?: number
+          notes?: string | null
+          source_order_id: string
+          status?: string
+          updated_at?: string
+          used_order_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          leftover_amount?: number
+          notes?: string | null
+          source_order_id?: string
+          status?: string
+          updated_at?: string
+          used_order_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -602,11 +731,13 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           picked_up_at: string | null
+          processing_fee: number
           promotion_code: string | null
           proof_of_delivery_url: string | null
           rejected_at: string | null
           rider_id: string | null
           scheduled_at: string | null
+          service_fee: number
           status: Database["public"]["Enums"]["order_status"]
           total_amount: number
           updated_at: string
@@ -632,11 +763,13 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           picked_up_at?: string | null
+          processing_fee?: number
           promotion_code?: string | null
           proof_of_delivery_url?: string | null
           rejected_at?: string | null
           rider_id?: string | null
           scheduled_at?: string | null
+          service_fee?: number
           status?: Database["public"]["Enums"]["order_status"]
           total_amount?: number
           updated_at?: string
@@ -662,11 +795,13 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           picked_up_at?: string | null
+          processing_fee?: number
           promotion_code?: string | null
           proof_of_delivery_url?: string | null
           rejected_at?: string | null
           rider_id?: string | null
           scheduled_at?: string | null
+          service_fee?: number
           status?: Database["public"]["Enums"]["order_status"]
           total_amount?: number
           updated_at?: string
@@ -742,6 +877,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          is_coming_soon: boolean
           low_stock_threshold: number
           merchant_id: string
           name: string
@@ -761,6 +897,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          is_coming_soon?: boolean
           low_stock_threshold?: number
           merchant_id: string
           name: string
@@ -780,6 +917,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          is_coming_soon?: boolean
           low_stock_threshold?: number
           merchant_id?: string
           name?: string
@@ -1183,6 +1321,30 @@ export type Database = {
           },
         ]
       }
+      suppressed_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          metadata: Json | null
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+        }
+        Relationships: []
+      }
       ticket_messages: {
         Row: {
           body: string
@@ -1252,6 +1414,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_email: {
+        Args: { message_id: number; queue_name: string }
+        Returns: boolean
+      }
+      enqueue_email: {
+        Args: { payload: Json; queue_name: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1260,6 +1430,23 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      move_to_dlq: {
+        Args: {
+          dlq_name: string
+          message_id: number
+          payload: Json
+          source_queue: string
+        }
+        Returns: number
+      }
+      read_email_batch: {
+        Args: { batch_size: number; queue_name: string; vt: number }
+        Returns: {
+          message: Json
+          msg_id: number
+          read_ct: number
+        }[]
+      }
       user_merchant_id: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {

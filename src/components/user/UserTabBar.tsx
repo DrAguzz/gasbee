@@ -1,11 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, ShoppingBag, User, Bell, Flame } from "lucide-react";
+import { Home, ShoppingBag, User, Bell } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { to: "/user/home", label: "Home", icon: Home },
-  { to: "/user/products", label: "Shop", icon: Flame },
   { to: "/user/orders", label: "My Order", icon: ShoppingBag },
   { to: "/user/notifications", label: "Alerts", icon: Bell },
   { to: "/user/profile", label: "Profile", icon: User },
@@ -47,7 +46,7 @@ export default function UserTabBar() {
     <div className="pointer-events-none fixed bottom-0 left-1/2 z-20 w-full max-w-md -translate-x-1/2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
       <nav
         ref={containerRef}
-        className="glass-tabbar pointer-events-auto relative grid grid-cols-5 rounded-[28px] px-2 py-2"
+        className="glass-tabbar pointer-events-auto relative grid grid-cols-4 rounded-[28px] px-2 py-2"
       >
         {/* Active liquid pill indicator */}
         {indicator && (

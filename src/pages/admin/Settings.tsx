@@ -9,8 +9,12 @@ import { toast } from "sonner";
 const KEYS = [
   { key: "platform_name", label: "Platform name", default: "Gasbee" },
   { key: "support_email", label: "Support email", default: "support@gasbee.com.my" },
-  { key: "default_delivery_fee", label: "Default delivery fee (MYR)", default: "5" },
   { key: "default_commission_pct", label: "Default commission (%)", default: "10" },
+  { key: "service_fee", label: "Service fee (MYR)", default: "5" },
+  { key: "delivery_base_fee", label: "Delivery base fee (MYR)", default: "5" },
+  { key: "delivery_base_km", label: "Delivery base distance (km)", default: "5" },
+  { key: "delivery_per_km", label: "Delivery per additional km (MYR)", default: "1" },
+  { key: "processing_fee", label: "Processing fee (MYR)", default: "1.50" },
 ];
 
 export default function Settings() {

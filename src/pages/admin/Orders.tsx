@@ -10,9 +10,11 @@ export default function Orders() {
     <DataListPage
       title="Orders" description="All customer orders across merchants."
       table="orders" searchField="code"
+      selectQuery="*, merchants(name)"
       orderBy={{ column: "created_at", ascending: false }}
       columns={[
         { key: "code", label: "Code", render: (r: any) => <span className="font-mono">{r.code}</span> },
+        { key: "merchant", label: "Merchant", render: (r: any) => r.merchants?.name ?? "—" },
         { key: "status", label: "Status", render: (r: any) => <StatusBadge value={r.status} /> },
         { key: "payment_status", label: "Payment", render: (r: any) => <StatusBadge value={r.payment_status} /> },
         { key: "total_amount", label: "Total", render: (r: any) => fmt(r.total_amount) },

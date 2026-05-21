@@ -60,7 +60,7 @@ export default function UserCart() {
           </div>
           <div className="flex-1">
             <div className="text-sm font-medium">{it.name}</div>
-            <div className="text-xs text-muted-foreground capitalize">{it.type}{it.category_slug === "industrial-gas" && " · industrial"}</div>
+            {it.category_slug === "industrial-gas" && <div className="text-xs text-muted-foreground">industrial</div>}
             <div className="text-sm font-semibold text-primary">RM {it.unit_price.toFixed(2)}</div>
           </div>
           <div className="flex items-center gap-1">

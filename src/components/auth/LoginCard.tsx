@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { homeForRoles, AppRole } from "@/hooks/useAuth";
@@ -17,16 +18,32 @@ interface Props {
   expectedRoles?: AppRole[];
   showSignup?: boolean;
   signupLink?: string;
+  showForgotPassword?: boolean;
+  resetRedirectPath?: string;
 }
 
-
-export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLink }: Props) => {
-
+export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLink, showForgotPassword, resetRedirectPath = "/reset-password" }: Props) => {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+
+  const sendReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setForgotBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}${resetRedirectPath}`,
+    });
+    setForgotBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Pautan reset password telah dihantar ke emel anda");
+    setForgotOpen(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +107,26 @@ export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLi
           </div>
           <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
         </form>
+        {showForgotPassword && (
+          <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+            <DialogTrigger asChild>
+              <button type="button" className="mt-3 block w-full text-center text-sm text-foreground/90 underline underline-offset-4 hover:text-foreground/80">
+                Forgot password?
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Reset password</DialogTitle></DialogHeader>
+              <form onSubmit={sendReset} className="space-y-3">
+                <p className="text-sm text-muted-foreground">Masukkan emel akaun anda. Kami akan hantar pautan untuk reset password.</p>
+                <div>
+                  <Label htmlFor="forgot-email">Email</Label>
+                  <Input id="forgot-email" type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} />
+                </div>
+                <Button type="submit" className="w-full" disabled={forgotBusy}>{forgotBusy ? "Menghantar…" : "Hantar pautan reset"}</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
         {showSignup && signupLink && (
           <p className="mt-4 text-center text-sm text-foreground/90">
             New here?{" "}

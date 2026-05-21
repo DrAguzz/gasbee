@@ -23,6 +23,7 @@ const schema = z.object({
   stock_qty: z.coerce.number().int().nonnegative(),
   low_stock_threshold: z.coerce.number().int().nonnegative(),
   image_url: z.string().trim().url().optional().or(z.literal("")).nullable(),
+  is_coming_soon: z.boolean().optional(),
 });
 
 export default function MerchantProductForm() {
@@ -33,7 +34,7 @@ export default function MerchantProductForm() {
   const [cats, setCats] = useState<any[]>([]);
   const [form, setForm] = useState<any>({
     name: "", description: "", cylinder_size_kg: 14, refill_price: 0, selling_price: 0,
-    new_cylinder_price: 0, deposit_amount: 0, stock_qty: 0, low_stock_threshold: 5, image_url: "", category_id: "",
+    new_cylinder_price: 0, deposit_amount: 0, stock_qty: 0, low_stock_threshold: 5, image_url: "", category_id: "", is_coming_soon: false,
   });
 
   useEffect(() => { supabase.from("categories").select("*").eq("is_active", true).then(({ data }) => setCats(data ?? [])); }, []);
@@ -69,14 +70,28 @@ export default function MerchantProductForm() {
           <div><Label>Cylinder size (kg)</Label><Input type="number" step="0.1" value={form.cylinder_size_kg ?? ""} onChange={(e) => setForm({ ...form, cylinder_size_kg: e.target.value })} /></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Refill price (RM)</Label><Input type="number" step="0.01" value={form.refill_price} onChange={(e) => setForm({ ...form, refill_price: e.target.value })} /></div>
-          <div><Label>New cylinder selling price (RM)</Label><Input type="number" step="0.01" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: e.target.value })} /></div>
-          <div><Label>New cylinder cost (RM)</Label><Input type="number" step="0.01" value={form.new_cylinder_price} onChange={(e) => setForm({ ...form, new_cylinder_price: e.target.value })} /></div>
+          <div>
+            <Label>Harga Refill / Gas (RM)</Label>
+            <Input type="number" step="0.01" value={form.refill_price} onChange={(e) => setForm({ ...form, refill_price: e.target.value })} />
+            <p className="mt-1 text-xs text-muted-foreground">Harga tukar gas sahaja</p>
+          </div>
+          <div>
+            <Label>Harga New Tong / Cylinder (RM)</Label>
+            <Input type="number" step="0.01" value={form.new_cylinder_price} onChange={(e) => setForm({ ...form, new_cylinder_price: e.target.value })} />
+            <p className="mt-1 text-xs text-muted-foreground">Harga tong kosong. Beli new = tong + refill</p>
+          </div>
           <div><Label>Deposit (RM)</Label><Input type="number" step="0.01" value={form.deposit_amount} onChange={(e) => setForm({ ...form, deposit_amount: e.target.value })} /></div>
           <div><Label>Stock qty</Label><Input type="number" value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: e.target.value })} /></div>
           <div><Label>Low-stock threshold</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
         </div>
         <div><Label>Product image</Label><ImageUpload bucket="product-images" pathPrefix={merchant?.id ?? "p"} value={form.image_url} onChange={(url) => setForm({ ...form, image_url: url })} aspect="square" /></div>
+        <label className="flex items-center gap-2 rounded-md border p-3 text-sm cursor-pointer">
+          <input type="checkbox" checked={!!form.is_coming_soon} onChange={(e) => setForm({ ...form, is_coming_soon: e.target.checked })} />
+          <div>
+            <div className="font-medium">Coming Soon</div>
+            <div className="text-xs text-muted-foreground">Produk dipaparkan kepada pelanggan tetapi tidak boleh dibeli.</div>
+          </div>
+        </label>
         <div className="flex gap-2"><Button onClick={save}>Save</Button><Button variant="outline" onClick={() => nav(-1)}>Cancel</Button></div>
       </Card>
     </div>

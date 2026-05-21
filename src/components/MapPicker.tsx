@@ -17,13 +17,15 @@ interface Props {
   height?: number;
   readOnly?: boolean;
   markers?: { lat: number; lng: number; label?: string; color?: string }[];
+  radiusKm?: number | null;
 }
 
-export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers }: Props) {
+export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers, radiusKm }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const extraRef = useRef<L.Marker[]>([]);
+  const circleRef = useRef<L.Circle | null>(null);
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -56,12 +58,22 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update marker when prop changes externally (e.g. GPS update)
+  // Update marker AND recenter map when prop changes externally (e.g. GPS update)
   useEffect(() => {
     if (!mapRef.current || lat == null || lng == null) return;
     if (!markerRef.current) {
       markerRef.current = L.marker([lat, lng], { icon, draggable: !readOnly }).addTo(mapRef.current);
-    } else markerRef.current.setLatLng([lat, lng]);
+      if (!readOnly) {
+        markerRef.current.on("dragend", (e) => {
+          const p = (e.target as L.Marker).getLatLng();
+          onChange?.(p.lat, p.lng);
+        });
+      }
+    } else {
+      markerRef.current.setLatLng([lat, lng]);
+    }
+    const currentZoom = mapRef.current.getZoom();
+    mapRef.current.setView([lat, lng], Math.max(currentZoom, 16), { animate: true });
   }, [lat, lng, readOnly]);
 
   // Extra markers
@@ -80,6 +92,21 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers 
     (markers ?? []).forEach((m) => all.push([m.lat, m.lng]));
     if (all.length > 1) mapRef.current.fitBounds(L.latLngBounds(all as any), { padding: [40, 40] });
   }, [markers, lat, lng]);
+
+  // Coverage radius circle
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (circleRef.current) { circleRef.current.remove(); circleRef.current = null; }
+    if (lat == null || lng == null || !radiusKm || radiusKm <= 0) return;
+    circleRef.current = L.circle([lat, lng], {
+      radius: radiusKm * 1000,
+      color: "#2563eb",
+      weight: 2,
+      fillColor: "#3b82f6",
+      fillOpacity: 0.15,
+    }).addTo(mapRef.current);
+    mapRef.current.fitBounds(circleRef.current.getBounds(), { padding: [20, 20] });
+  }, [lat, lng, radiusKm]);
 
   return <div ref={ref} style={{ height, width: "100%" }} className="rounded-md border" />;
 }

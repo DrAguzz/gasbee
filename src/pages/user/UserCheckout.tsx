@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
-import { calcDeliveryFee, haversineKm, DELIVERY_RATE } from "@/lib/delivery";
+import { calcDeliveryFee, haversineKm, DEFAULT_FEE_CONFIG, type FeeConfig } from "@/lib/delivery";
 
 export default function UserCheckout() {
   const { user } = useAuth();
@@ -27,13 +28,44 @@ export default function UserCheckout() {
   const [deliveryType, setDeliveryType] = useState<"immediate" | "scheduled">("immediate");
   const [scheduledAt, setScheduledAt] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [feeConfig, setFeeConfig] = useState<FeeConfig>(DEFAULT_FEE_CONFIG);
+  const [credits, setCredits] = useState<any[]>([]);
+  const [useCredit, setUseCredit] = useState(true);
 
-  const totalKg = items.reduce((a, it: any) => a + Number(it.cylinder_size_kg ?? 0) * it.quantity, 0);
+  useEffect(() => {
+    supabase.from("app_settings").select("*").in("key", [
+      "service_fee", "delivery_base_fee", "delivery_base_km", "delivery_per_km", "processing_fee",
+    ]).then(({ data }) => {
+      const m: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        const raw = typeof r.value === "string" ? r.value : (r.value?.value ?? r.value);
+        const n = Number(raw);
+        if (Number.isFinite(n)) m[r.key] = n;
+      });
+      setFeeConfig({
+        serviceFee: m.service_fee ?? DEFAULT_FEE_CONFIG.serviceFee,
+        deliveryBaseFee: m.delivery_base_fee ?? DEFAULT_FEE_CONFIG.deliveryBaseFee,
+        deliveryBaseKm: m.delivery_base_km ?? DEFAULT_FEE_CONFIG.deliveryBaseKm,
+        deliveryPerKm: m.delivery_per_km ?? DEFAULT_FEE_CONFIG.deliveryPerKm,
+        processingFee: m.processing_fee ?? DEFAULT_FEE_CONFIG.processingFee,
+      });
+    });
+  }, []);
+
   const addr = addresses.find((a) => a.id === addrId);
   const distanceKm = haversineKm(addr?.latitude, addr?.longitude, merchant?.latitude, merchant?.longitude);
-  const feeCalc = calcDeliveryFee({ distanceKm, totalKg });
+  const feeCalc = calcDeliveryFee({ distanceKm, config: feeConfig });
   const deliveryFee = subtotal > 0 ? feeCalc.fee : 0;
-  const total = Math.max(0, subtotal + deliveryFee - discount);
+  const serviceFee = subtotal > 0 ? feeConfig.serviceFee : 0;
+  const processingFee = subtotal > 0 ? feeConfig.processingFee : 0;
+  // Filter credits: must be from a DIFFERENT merchant than the current cart
+  const cartMerchantId = items[0]?.merchant_id;
+  const eligibleCredit = credits.find((c) => c.source_merchant_id !== cartMerchantId);
+  const grossTotal = Math.max(0, subtotal + deliveryFee + serviceFee + processingFee - discount);
+  const creditApplied = useCredit && eligibleCredit ? Math.min(Number(eligibleCredit.amount), grossTotal) : 0;
+  const creditLeftover = useCredit && eligibleCredit ? Math.max(0, Number(eligibleCredit.amount) - creditApplied) : 0;
+  const total = Math.max(0, grossTotal - creditApplied);
 
   useEffect(() => {
     if (!user) return;
@@ -42,13 +74,24 @@ export default function UserCheckout() {
       const def = data?.find((a) => a.is_default) ?? data?.[0];
       if (def) setAddrId(def.id);
     });
+    // Load active credits with source merchant id
+    supabase.from("order_credits").select("*").eq("user_id", user.id).eq("status", "active").then(async ({ data }) => {
+      if (!data || data.length === 0) { setCredits([]); return; }
+      const ids = data.map((c: any) => c.source_order_id);
+      const { data: ord } = await supabase.from("orders").select("id,merchant_id").in("id", ids);
+      const m = new Map((ord ?? []).map((o: any) => [o.id, o.merchant_id]));
+      setCredits(data.map((c: any) => ({ ...c, source_merchant_id: m.get(c.source_order_id) })));
+    });
   }, [user]);
 
   useEffect(() => {
     const mid = items[0]?.merchant_id;
     if (!mid) { setMerchant(null); return; }
-    supabase.from("merchants").select("id,latitude,longitude,name").eq("id", mid).maybeSingle().then(({ data }) => setMerchant(data));
+    supabase.from("merchants").select("id,latitude,longitude,name,delivery_radius_km").eq("id", mid).maybeSingle().then(({ data }) => setMerchant(data));
   }, [items[0]?.merchant_id]);
+
+  const radiusKm = Number(merchant?.delivery_radius_km ?? 10);
+  const outOfRange = distanceKm != null && distanceKm > radiusKm;
 
   const applyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -62,6 +105,7 @@ export default function UserCheckout() {
 
   const placeOrder = async () => {
     if (!user || !addrId || items.length === 0) { toast.error("Select address and add items"); return; }
+    if (outOfRange) { toast.error(`${merchant?.name ?? "This merchant"} only delivers within ${radiusKm} km. You are ${distanceKm!.toFixed(1)} km away.`); return; }
     if (deliveryType === "scheduled" && (!scheduledAt || new Date(scheduledAt) <= new Date())) { toast.error("Pick a future date/time for scheduled delivery"); return; }
     // Cart limit guards (defensive)
     const cyl = items.filter((it: any) => it.category_slug === "cylinder" || it.category_slug === "lpg-refill").reduce((a, x) => a + x.quantity, 0);
@@ -80,14 +124,16 @@ export default function UserCheckout() {
       address_snapshot: addr2 as any,
       items_subtotal: subtotal,
       delivery_fee: deliveryFee,
-      discount,
+      service_fee: serviceFee,
+      processing_fee: processingFee,
+      discount: discount + creditApplied,
       total_amount: total,
       payment_method: paymentMethod,
-      payment_status: "pending",
+      payment_status: total === 0 ? "paid" : "pending",
       status: "pending",
       delivery_type: deliveryType,
       scheduled_at: deliveryType === "scheduled" ? scheduledAt : null,
-      notes,
+      notes: [notes, creditApplied > 0 ? `Store credit applied: RM ${creditApplied.toFixed(2)} (from order ${eligibleCredit?.source_order_id?.slice(0,8)})` : null].filter(Boolean).join(" · "),
       promotion_code: promoCode || null,
     }).select().single();
 
@@ -106,10 +152,33 @@ export default function UserCheckout() {
     }));
     await supabase.from("order_items").insert(orderItems);
 
+    // Mark credit as used + create leftover refund if any
+    if (creditApplied > 0 && eligibleCredit) {
+      await supabase.from("order_credits").update({
+        status: "used",
+        used_order_id: order.id,
+        leftover_amount: creditLeftover,
+        notes: creditLeftover > 0 ? `Leftover RM ${creditLeftover.toFixed(2)} to be refunded by admin` : null,
+      }).eq("id", eligibleCredit.id);
+
+      if (creditLeftover > 0) {
+        await supabase.from("refunds").insert({
+          order_id: eligibleCredit.source_order_id,
+          requester_id: user.id,
+          reason: `Leftover credit refund (used RM ${creditApplied.toFixed(2)} on new order ${order.code})`,
+          reason_category: "credit_leftover",
+          amount: creditLeftover,
+          refund_amount: creditLeftover,
+          status: "requested",
+        });
+        toast.info(`Admin will refund the remaining RM ${creditLeftover.toFixed(2)}.`);
+      }
+    }
+
     clear();
 
     // Online payment via dummy gateway
-    if (paymentMethod !== "cod") {
+    if (total > 0 && paymentMethod !== "cod") {
       nav(`/user/payment/${order.id}`);
       return;
     }
@@ -149,13 +218,22 @@ export default function UserCheckout() {
         <div className="mb-2 text-sm font-semibold">Items</div>
         <Card className="divide-y">
           {items.map((it) => (
-            <div key={`${it.product_id}-${it.type}`} className="flex justify-between p-3 text-sm">
-              <span>{it.name} × {it.quantity}</span>
-              <span>RM {(it.unit_price * it.quantity).toFixed(2)}</span>
+            <div key={`${it.product_id}-${it.type}`} className="p-3 text-sm">
+              <div className="flex justify-between">
+                <span>{it.name} × {it.quantity}</span>
+                <span>RM {(it.unit_price * it.quantity).toFixed(2)}</span>
+              </div>
+              {it.type === "new" && (it.new_cylinder_price != null || it.refill_price != null) && (
+                <div className="mt-1 space-y-0.5 pl-3 text-xs text-muted-foreground">
+                  <div className="flex justify-between"><span>· New cylinder (tong)</span><span>RM {(Number(it.new_cylinder_price ?? 0) * it.quantity).toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span>· Refill (gas)</span><span>RM {(Number(it.refill_price ?? 0) * it.quantity).toFixed(2)}</span></div>
+                </div>
+              )}
             </div>
           ))}
         </Card>
       </div>
+
 
       <div>
         <div className="mb-2 text-sm font-semibold">Promo code</div>
@@ -196,19 +274,75 @@ export default function UserCheckout() {
       <Card className="space-y-1 p-3 text-sm">
         <div className="flex justify-between"><span>Subtotal</span><span>RM {subtotal.toFixed(2)}</span></div>
         <div className="flex justify-between">
-          <span>Delivery {distanceKm != null && <span className="text-xs text-muted-foreground">({distanceKm.toFixed(1)} km · {totalKg} kg)</span>}</span>
+          <span>Service fee</span>
+          <span>RM {serviceFee.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Delivery fee {distanceKm != null && <span className="text-xs text-muted-foreground">({distanceKm.toFixed(1)} km)</span>}</span>
           <span>RM {deliveryFee.toFixed(2)}</span>
         </div>
         {subtotal > 0 && (
-          <div className="text-[10px] text-muted-foreground">Base RM{DELIVERY_RATE.BASE} + RM{DELIVERY_RATE.PER_KM}/km + RM{DELIVERY_RATE.PER_KG}/kg{distanceKm == null && " · estimated, set address coordinates for accurate fee"}</div>
+          <div className="text-[10px] text-muted-foreground">
+            RM{feeConfig.deliveryBaseFee.toFixed(2)} for first {feeConfig.deliveryBaseKm} km
+            {feeCalc.extraKm > 0 && <> · +{feeCalc.extraKm} km × RM{feeConfig.deliveryPerKm.toFixed(2)} = RM{feeCalc.breakdown.extra.toFixed(2)}</>}
+            {distanceKm == null && " · estimated, set address coordinates for accurate fee"}
+          </div>
         )}
+        <div className="flex justify-between">
+          <span>Processing fee</span>
+          <span>RM {processingFee.toFixed(2)}</span>
+        </div>
         {discount > 0 && <div className="flex justify-between text-primary"><span>Discount</span><span>- RM {discount.toFixed(2)}</span></div>}
+        {eligibleCredit && (
+          <div className="mt-1 rounded-md border border-primary/30 bg-primary/5 p-2">
+            <label className="flex items-start gap-2 text-xs">
+              <input type="checkbox" className="mt-0.5" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
+              <span className="flex-1">
+                Apply store credit <span className="font-semibold">RM {Number(eligibleCredit.amount).toFixed(2)}</span> from rejected order.
+                {creditApplied > 0 && creditLeftover > 0 && (
+                  <span className="mt-1 block text-muted-foreground">Leftover RM {creditLeftover.toFixed(2)} will be refunded by admin.</span>
+                )}
+              </span>
+            </label>
+            {creditApplied > 0 && (
+              <div className="mt-1 flex justify-between font-medium text-primary"><span>Credit applied</span><span>- RM {creditApplied.toFixed(2)}</span></div>
+            )}
+          </div>
+        )}
         <div className="mt-1 flex justify-between border-t pt-2 font-bold"><span>Total</span><span className="text-primary">RM {total.toFixed(2)}</span></div>
       </Card>
 
-      <Button className="w-full" onClick={placeOrder} disabled={busy || items.length === 0 || !addrId}>
+      {outOfRange && (
+        <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          {merchant?.name ?? "This merchant"} only delivers within {radiusKm} km. Your selected address is {distanceKm!.toFixed(1)} km away — please choose a different address or merchant.
+        </Card>
+      )}
+
+      <Button className="w-full" onClick={() => setConfirmOpen(true)} disabled={busy || items.length === 0 || !addrId || outOfRange}>
         {busy ? "Placing…" : `Place order · RM ${total.toFixed(2)}`}
       </Button>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ready to place your order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please confirm your delivery details, payment method and total amount before we process your order.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1 rounded-md border bg-muted/30 p-3 text-sm">
+            {addr && (
+              <div><span className="text-muted-foreground">Deliver to: </span><span className="font-medium">{addr.label ?? "Address"} — {addr.address_line1}, {addr.postcode} {addr.city}</span></div>
+            )}
+            <div><span className="text-muted-foreground">Payment: </span><span className="font-medium uppercase">{paymentMethod}</span></div>
+            <div><span className="text-muted-foreground">Total: </span><span className="font-bold text-primary">RM {total.toFixed(2)}</span></div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Review again</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmOpen(false); placeOrder(); }}>Confirm & place order</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

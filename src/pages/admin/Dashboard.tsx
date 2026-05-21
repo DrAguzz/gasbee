@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import {
@@ -10,17 +11,19 @@ interface Stats {
   pending: number; completed: number; cancelled: number; refunds: number;
 }
 
-const Stat = ({ label, value, icon: Icon, hint }: { label: string; value: string|number; icon: any; hint?: string }) => (
-  <Card className="p-5">
-    <div className="flex items-start justify-between">
-      <div>
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className="mt-2 text-2xl font-bold">{value}</div>
-        {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+const Stat = ({ label, value, icon: Icon, hint, to }: { label: string; value: string|number; icon: any; hint?: string; to: string }) => (
+  <Link to={to} className="block">
+    <Card className="p-5 transition hover:bg-accent/40 hover:shadow-md cursor-pointer">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+          <div className="mt-2 text-2xl font-bold">{value}</div>
+          {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground"><Icon className="h-5 w-5" /></div>
       </div>
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground"><Icon className="h-5 w-5" /></div>
-    </div>
-  </Card>
+    </Card>
+  </Link>
 );
 
 export default function Dashboard() {
@@ -60,14 +63,14 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">Live overview of Gasbee operations.</p>
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Total Orders" value={s?.totalOrders ?? "—"} icon={ShoppingBag} />
-        <Stat label="Revenue" value={s ? fmt(s.revenue) : "—"} icon={DollarSign} />
-        <Stat label="Active Merchants" value={s?.activeMerchants ?? "—"} icon={Store} />
-        <Stat label="Active Riders" value={s?.activeRiders ?? "—"} icon={Bike} />
-        <Stat label="Pending Orders" value={s?.pending ?? "—"} icon={Clock} />
-        <Stat label="Completed" value={s?.completed ?? "—"} icon={CheckCircle2} />
-        <Stat label="Cancelled" value={s?.cancelled ?? "—"} icon={XCircle} />
-        <Stat label="Refund Requests" value={s?.refunds ?? "—"} icon={RotateCcw} />
+        <Stat label="Total Orders" value={s?.totalOrders ?? "—"} icon={ShoppingBag} to="/orders" />
+        <Stat label="Revenue" value={s ? fmt(s.revenue) : "—"} icon={DollarSign} to="/payments" />
+        <Stat label="Active Merchants" value={s?.activeMerchants ?? "—"} icon={Store} to="/merchants" />
+        <Stat label="Active Riders" value={s?.activeRiders ?? "—"} icon={Bike} to="/riders" />
+        <Stat label="Pending Orders" value={s?.pending ?? "—"} icon={Clock} to="/orders?status=pending" />
+        <Stat label="Completed" value={s?.completed ?? "—"} icon={CheckCircle2} to="/orders?status=delivered" />
+        <Stat label="Cancelled" value={s?.cancelled ?? "—"} icon={XCircle} to="/orders?status=cancelled" />
+        <Stat label="Refund Requests" value={s?.refunds ?? "—"} icon={RotateCcw} to="/refunds" />
       </div>
       <Card className="p-5">
         <h2 className="mb-4 text-lg font-semibold">Top Merchants</h2>
@@ -76,10 +79,10 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-2">
             {topMerchants.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-md border p-3">
+              <Link key={m.id} to={`/merchants/${m.id}`} className="flex items-center justify-between rounded-md border p-3 transition hover:bg-accent/40">
                 <div className="font-medium">{m.name}</div>
                 <div className="text-sm text-muted-foreground">{m.total_orders} orders · ★ {Number(m.rating ?? 0).toFixed(1)}</div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

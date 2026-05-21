@@ -11,6 +11,7 @@ import { MapPin, Plus, Trash2, Star, Crosshair, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { MapPicker } from "@/components/MapPicker";
+import { getMyLocation } from "@/lib/geolocation";
 
 const MY_STATES = [
   "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang",
@@ -43,11 +44,10 @@ export default function UserAddresses() {
   useEffect(load, [user]);
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) { toast.error("Geolocation not supported"); return; }
-    navigator.geolocation.getCurrentPosition(
-      (p) => setForm((f: any) => ({ ...f, latitude: p.coords.latitude, longitude: p.coords.longitude })),
-      () => toast.error("Could not get location")
-    );
+    getMyLocation({
+      onSuccess: (latitude, longitude) =>
+        setForm((f: any) => ({ ...f, latitude, longitude })),
+    });
   };
 
   const openNew = () => { setForm(empty); setOpen(true); };

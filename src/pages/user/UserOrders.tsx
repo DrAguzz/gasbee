@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { Package, Store, Calendar, ChevronRight } from "lucide-react";
+import { Package, Store, Calendar, ChevronRight, Download } from "lucide-react";
+import { downloadReceipt } from "@/lib/receipt";
+import { toast } from "sonner";
 
 export default function UserOrders() {
   const { user } = useAuth();
@@ -23,8 +25,8 @@ export default function UserOrders() {
       </div>
       <div className="space-y-2.5">
         {orders.map((o) => (
-          <Link key={o.id} to={`/user/orders/${o.id}`} className="block">
-            <div className="glass-category-card group flex items-center gap-3 rounded-2xl p-3">
+          <div key={o.id} className="glass-category-card group flex items-center gap-3 rounded-2xl p-3">
+            <Link to={`/user/orders/${o.id}`} className="flex flex-1 items-center gap-3 min-w-0">
               <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/15">
                 <Package className="h-6 w-6 text-primary" />
               </div>
@@ -42,9 +44,20 @@ export default function UserOrders() {
                 </div>
                 <div className="mt-1 text-sm font-bold text-primary">RM {Number(o.total_amount).toFixed(2)}</div>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-active:translate-x-0.5" />
-            </div>
-          </Link>
+            </Link>
+            {o.payment_status === "paid" ? (
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); downloadReceipt(o.id).catch((err) => toast.error(err.message)); }}
+                className="rounded-full p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                aria-label="Download receipt"
+                title="Download receipt"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
         ))}
         {orders.length === 0 && (
           <div className="glass-category-card rounded-2xl p-6 text-center">

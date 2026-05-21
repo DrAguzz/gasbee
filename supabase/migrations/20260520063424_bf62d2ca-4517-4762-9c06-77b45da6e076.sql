@@ -1,0 +1,1 @@
+ALTER TABLE public.merchants ADD COLUMN IF NOT EXISTS delivery_radius_km numeric NOT NULL DEFAULT 10;

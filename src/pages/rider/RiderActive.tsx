@@ -9,6 +9,7 @@ import { Phone, Navigation, MapPin, Package, Home } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 
 const FLOW: Record<string, string> = {
+  assigned: "arrived_at_merchant",
   rider_accepted: "arrived_at_merchant",
   arrived_at_merchant: "picked_up",
   picked_up: "on_delivery",
@@ -16,7 +17,7 @@ const FLOW: Record<string, string> = {
   arrived_at_customer: "delivered",
 };
 
-const PRE_PICKUP = new Set(["rider_accepted", "arrived_at_merchant"]);
+const PRE_PICKUP = new Set(["assigned", "rider_accepted", "arrived_at_merchant"]);
 
 export default function RiderActive() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ export default function RiderActive() {
     const { data: r } = await supabase.from("riders").select("*").eq("user_id", user.id).maybeSingle();
     setRider(r);
     if (!r) return;
-    const { data } = await supabase.from("orders").select("*").eq("rider_id", r.id).in("status", ["rider_accepted","arrived_at_merchant","picked_up","on_delivery","arrived_at_customer"]).order("created_at", { ascending: false });
+    const { data } = await supabase.from("orders").select("*").eq("rider_id", r.id).in("status", ["assigned","rider_accepted","arrived_at_merchant","picked_up","on_delivery","arrived_at_customer"]).order("created_at", { ascending: false });
     setOrders(data ?? []);
     // load proof urls already on order
     const init: Record<string, string | null> = {};
@@ -47,6 +48,23 @@ export default function RiderActive() {
     }
   };
   useEffect(() => { load(); }, [user?.id]);
+
+  // Realtime: refresh when an order is assigned to / updated for this rider
+  useEffect(() => {
+    if (!rider?.id) return;
+    const ch = supabase
+      .channel(`rider-active-${rider.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `rider_id=eq.${rider.id}` }, (p) => {
+        const nu: any = p.new; const ol: any = p.old;
+        if (ol?.rider_id !== nu.rider_id) {
+          toast.success(`🛵 New job assigned: ${nu.code}`);
+        }
+        load();
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `rider_id=eq.${rider.id}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [rider?.id]);
 
   useEffect(() => {
     if (!rider || orders.length === 0 || !navigator.geolocation) return;
