@@ -88,8 +88,23 @@ import RiderRefundPickups from "@/pages/rider/RiderRefundPickups";
 
 import PlaceholderPage from "@/components/PlaceholderPage";
 import NotFound from "./pages/NotFound";
+import { DeepLinkProvider } from "@/components/DeepLinkProvider";
+import PaymentBridge from "@/pages/PaymentBridge";
+import PaymentSuccess from "@/pages/PaymentSuccess";
+import PaymentFailed from "@/pages/PaymentFailed";
+import { APP_VARIANT } from "@/variant";
 
 const queryClient = new QueryClient();
+
+const RootRedirect = () => {
+  if (APP_VARIANT === "user") {
+    return <Navigate to="/user/home" replace />;
+  }
+  if (APP_VARIANT === "rider") {
+    return <Navigate to="/merchant/rider-dashboard" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
 
 const Admin = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute allow={ADMIN_ROLES} loginPath="/login"><AdminLayout>{children}</AdminLayout></ProtectedRoute>
@@ -110,12 +125,15 @@ const App = () => (
       <Toaster /><Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* ===== ADMIN ===== */}
-            <Route path="/login" element={<AdminLogin />} />
-            <Route element={<ProtectedRoute allow={ADMIN_ROLES} loginPath="/login"><AdminLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+          <DeepLinkProvider>
+            <Routes>
+              {/* ===== ROOT REDIRECT ===== */}
+              <Route path="/" element={<RootRedirect />} />
+
+              {/* ===== ADMIN ===== */}
+              <Route path="/login" element={<AdminLogin />} />
+              <Route element={<ProtectedRoute allow={ADMIN_ROLES} loginPath="/login"><AdminLayout /></ProtectedRoute>}>
+                <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/orders/:id" element={<OrderDetail />} />
               <Route path="/customers" element={<Customers />} />
@@ -204,8 +222,12 @@ const App = () => (
               <Route path="/merchant/rider/refund-pickups" element={<RiderRefundPickups />} />
             </Route>
 
+            <Route path="/payment-bridge" element={<PaymentBridge />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/payment-failed" element={<PaymentFailed />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </DeepLinkProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

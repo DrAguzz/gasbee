@@ -35,6 +35,6 @@ echo "✅ Done! Android project is at: android-$TARGET/"
 echo ""
 echo "📋 Next steps:"
 echo "   1. Open Android Studio: npx cap open android"
-echo "   2. Build > Build Bundle(s) / APK(s) > Build APK(s)"
-echo "   3. APK will be at: android-$TARGET/app/build/outputs/apk/debug/app-debug.apk"
+#   2. Build > Build Bundle(s) / APK(s) > Build APK(s)
+#   3. APK will be at: android-$TARGET/app/build/outputs/apk/debug/app-debug.apk"
 echo ""
