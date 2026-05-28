@@ -1,1 +1,1 @@
-export const APP_VARIANT = 'user' as 'user' | 'rider';
+export const APP_VARIANT = 'rider' as 'user' | 'rider';

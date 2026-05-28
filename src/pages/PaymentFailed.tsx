@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { XCircle } from "lucide-react";
 
@@ -8,6 +9,13 @@ export default function PaymentFailed() {
   const handleReturn = () => {
     window.location.href = "gasbee://payment/failed";
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleReturn();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-muted/50 to-background p-4">

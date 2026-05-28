@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, CreditCard } from "lucide-react";
+import { createAndOpenPayment } from "@/services/payment.service";
 
 export default function UserPayment() {
   const { id } = useParams();
@@ -22,39 +23,8 @@ export default function UserPayment() {
     setBusy(true);
 
     try {
-      // Use the published domain for redirects so CHIP returns to the live app
-      // (works whether we're inside the Lovable preview iframe or on the published domain).
-      let redirectOrigin = window.location.origin;
-      try {
-        if (window.top && window.top !== window.self) {
-          redirectOrigin = window.top.location.origin;
-        }
-      } catch {
-        redirectOrigin = window.location.hostname.includes("lovableproject.com")
-          ? "https://gasbee.lovable.app"
-          : window.location.origin;
-      }
-
-      const { data, error } = await supabase.functions.invoke("chip-create-purchase", {
-        body: {
-          order_id: order.id,
-          success_redirect: `${redirectOrigin}/user/orders/${order.id}?payment=success`,
-          failure_redirect: `${redirectOrigin}/user/orders/${order.id}?payment=failed`,
-        },
-      });
+      const { url, error } = await createAndOpenPayment({ orderId: order.id });
       if (error) throw error;
-      if (!data?.url) throw new Error("No checkout URL");
-
-      // Break out of any iframe (Lovable preview) by using a target="_top" anchor click.
-      // This works cross-origin where window.top.location assignment is blocked,
-      // and avoids loading CHIP in an iframe (which CHIP refuses via X-Frame-Options).
-      const a = document.createElement("a");
-      a.href = data.url;
-      a.target = "_top";
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
     } catch (e: any) {
       toast.error(e.message ?? "Failed to start payment");
       setBusy(false);

@@ -30,11 +30,20 @@ cp "capacitor.config.$TARGET.ts" capacitor.config.ts
 echo "📱 Step 3: Syncing to Android project..."
 npx cap sync android
 
+# 4. Update configurations (appId, deep links, etc.)
+echo "🔧 Step 4: Running update-config.cjs for $TARGET..."
+node update-config.cjs "$TARGET"
+
+# 5. Compile the Android app using gradle
+echo "🏗️  Step 5: Compiling APK via Gradle..."
+cd "android-$TARGET"
+./gradlew assembleDebug
+cd ..
+
+# 6. Copy the compiled APK to the root workspace
+echo "💾 Step 6: Copying APK to workspace root..."
+cp "android-$TARGET/app/build/outputs/apk/debug/app-debug.apk" "gasbee-$TARGET-debug.apk"
+
 echo ""
-echo "✅ Done! Android project is at: android-$TARGET/"
-echo ""
-echo "📋 Next steps:"
-echo "   1. Open Android Studio: npx cap open android"
-#   2. Build > Build Bundle(s) / APK(s) > Build APK(s)
-#   3. APK will be at: android-$TARGET/app/build/outputs/apk/debug/app-debug.apk"
+echo "🎉 Done! Latest APK is ready at: gasbee-$TARGET-debug.apk"
 echo ""

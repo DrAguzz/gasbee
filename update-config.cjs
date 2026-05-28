@@ -5,6 +5,7 @@ const variant = process.argv[2];
 const isUser = variant === 'user';
 const appId = isUser ? 'com.gasbee.user' : 'com.gasbee.rider';
 const appName = isUser ? 'Gasbee' : 'Gasbee Rider';
+const targetAndroidDir = isUser ? 'android-user' : 'android-rider';
 
 // 1. Update capacitor.config.ts
 const capConfigPath = path.join(__dirname, 'capacitor.config.ts');
@@ -16,18 +17,18 @@ if (fs.existsSync(capConfigPath)) {
   console.log(`Updated capacitor.config.ts -> appId: ${appId}, appName: ${appName}`);
 }
 
-// 2. Update android/app/build.gradle
-const buildGradlePath = path.join(__dirname, 'android', 'app', 'build.gradle');
+// 2. Update android project build.gradle
+const buildGradlePath = path.join(__dirname, targetAndroidDir, 'app', 'build.gradle');
 if (fs.existsSync(buildGradlePath)) {
   let content = fs.readFileSync(buildGradlePath, 'utf8');
   content = content.replace(/namespace\s+['"`][^'"`]+['"`]/, `namespace "${appId}"`);
   content = content.replace(/applicationId\s+['"`][^'"`]+['"`]/, `applicationId "${appId}"`);
   fs.writeFileSync(buildGradlePath, content, 'utf8');
-  console.log(`Updated android/app/build.gradle -> appId: ${appId}`);
+  console.log(`Updated ${targetAndroidDir}/app/build.gradle -> appId: ${appId}`);
 }
 
 // 3. Update strings.xml
-const stringsXmlPath = path.join(__dirname, 'android', 'app', 'src', 'main', 'res', 'values', 'strings.xml');
+const stringsXmlPath = path.join(__dirname, targetAndroidDir, 'app', 'src', 'main', 'res', 'values', 'strings.xml');
 if (fs.existsSync(stringsXmlPath)) {
   let content = fs.readFileSync(stringsXmlPath, 'utf8');
   content = content.replace(/<string name="app_name">[^<]+<\/string>/, `<string name="app_name">${appName}</string>`);
@@ -38,7 +39,7 @@ if (fs.existsSync(stringsXmlPath)) {
 }
 
 // 4. Patch AndroidManifest.xml with CHIP Deep Links
-const manifestPath = path.join(__dirname, 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
+const manifestPath = path.join(__dirname, targetAndroidDir, 'app', 'src', 'main', 'AndroidManifest.xml');
 if (fs.existsSync(manifestPath)) {
   let content = fs.readFileSync(manifestPath, 'utf8');
   if (!content.includes('android:scheme="gasbee"')) {
@@ -59,7 +60,7 @@ if (fs.existsSync(manifestPath)) {
     }
     
     fs.writeFileSync(manifestPath, content, 'utf8');
-    console.log("Patched AndroidManifest.xml with deep links & singleTask launchMode.");
+    console.log(`Patched ${targetAndroidDir} AndroidManifest.xml with deep links & singleTask launchMode.`);
   }
 }
 

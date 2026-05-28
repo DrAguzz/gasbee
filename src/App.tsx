@@ -131,7 +131,12 @@ const App = () => (
               <Route path="/" element={<RootRedirect />} />
 
               {/* ===== ADMIN ===== */}
-              <Route path="/login" element={<AdminLogin />} />
+              <Route 
+                path="/login" 
+                element={
+                  APP_VARIANT === "rider" ? <Navigate to="/merchant/login" replace /> : <AdminLogin />
+                } 
+              />
               <Route element={<ProtectedRoute allow={ADMIN_ROLES} loginPath="/login"><AdminLayout /></ProtectedRoute>}>
                 <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<Orders />} />
@@ -161,7 +166,12 @@ const App = () => (
             </Route>
 
             {/* ===== USER (BUYER) ===== */}
-            <Route path="/user/login" element={<UserLogin />} />
+            <Route 
+              path="/user/login" 
+              element={
+                APP_VARIANT === "rider" ? <Navigate to="/merchant/login" replace /> : <UserLogin />
+              } 
+            />
             <Route path="/user/register" element={<UserRegister />} />
             <Route path="/reset-password" element={<UserResetPassword />} />
             <Route element={<ProtectedRoute allow={CUSTOMER_ROLES} loginPath="/user/login"><UserLayout /></ProtectedRoute>}>
