@@ -43,13 +43,16 @@ export default function RiderDashboard() {
     setMerchants((prev) => ({ ...prev, ...map }));
   };
 
-  const loadJobs = async (merchantId: string) => {
+  const loadJobs = async (r: any) => {
+    if (!r || !r.is_active || r.status !== "online") {
+      setJobs([]);
+      return;
+    }
     const { data } = await supabase
       .from("orders")
       .select("*")
-      .eq("merchant_id", merchantId)
-      .is("rider_id", null)
-      .in("status", ["accepted", "preparing"])
+      .eq("merchant_id", r.merchant_id)
+      .or(`and(rider_id.is.null,status.in.("accepted","preparing")),and(rider_id.eq.${r.id},status.eq.assigned)`)
       .order("created_at", { ascending: false });
     const newJobs = data ?? [];
     setJobs(newJobs);
@@ -70,7 +73,7 @@ export default function RiderDashboard() {
       .from("orders")
       .select("*")
       .eq("rider_id", riderId)
-      .in("status", ["assigned", "rider_accepted", "arrived_at_merchant", "picked_up", "on_delivery", "arrived_at_customer"])
+      .in("status", ["rider_accepted", "arrived_at_merchant", "picked_up", "on_delivery", "arrived_at_customer"])
       .order("created_at", { ascending: false });
     setActiveOrders(data ?? []);
     const mIds = Array.from(new Set((data ?? []).map((o: any) => o.merchant_id)));
@@ -85,18 +88,34 @@ export default function RiderDashboard() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const [del, act, avail] = await Promise.all([
       supabase.from("orders").select("total_amount,delivery_fee", { count: "exact" }).eq("rider_id", r.id).eq("status", "delivered").gte("delivered_at", today.toISOString()),
-      supabase.from("orders").select("id", { count: "exact", head: true }).eq("rider_id", r.id).in("status", ["assigned", "rider_accepted", "arrived_at_merchant", "picked_up", "on_delivery", "arrived_at_customer"]),
+      supabase.from("orders").select("id", { count: "exact", head: true }).eq("rider_id", r.id).in("status", ["rider_accepted", "arrived_at_merchant", "picked_up", "on_delivery", "arrived_at_customer"]),
       supabase.from("orders").select("id", { count: "exact", head: true }).eq("merchant_id", r.merchant_id).is("rider_id", null).in("status", ["accepted", "preparing"]),
     ]);
     const earnings = (del.data ?? []).reduce((s: number, o: any) => s + Number(o.delivery_fee || 0), 0);
     setStats({ today: del.count ?? 0, earnings, active: act.count ?? 0, available: avail.count ?? 0 });
-    await Promise.all([loadJobs(r.merchant_id), loadActive(r.id)]);
+    await Promise.all([loadJobs(r), loadActive(r.id)]);
   };
   useEffect(() => { load(); }, [user?.id]);
 
+  // Realtime: sync rider profile changes
+  useEffect(() => {
+    if (!user?.id) return;
+    const ch = supabase
+      .channel(`rider-profile-${user.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "riders", filter: `user_id=eq.${user.id}` }, (p) => {
+        const nr = p.new;
+        setRider(nr);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user?.id]);
+
   // Realtime: new orders for this merchant
   useEffect(() => {
-    if (!rider?.merchant_id) return;
+    if (!rider || !rider.is_active || rider.status !== "online") {
+      setJobs([]);
+      return;
+    }
     const ch = supabase
       .channel(`rider-orders-${rider.merchant_id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `merchant_id=eq.${rider.merchant_id}` }, (p) => {
@@ -107,12 +126,12 @@ export default function RiderDashboard() {
           playBeep(4);
           toast.success(`🛵 New job ${o.code}`, { description: "A new order is ready to grab.", duration: 8000 });
         }
-        loadJobs(rider.merchant_id);
+        loadJobs(rider);
         loadActive(rider.id);
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [rider?.merchant_id, rider?.id]);
+  }, [rider?.merchant_id, rider?.id, rider?.is_active, rider?.status]);
 
   const toggleStatus = async (online: boolean) => {
     if (!rider) return;

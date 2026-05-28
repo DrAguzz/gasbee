@@ -15,8 +15,16 @@ export default function RiderJobs() {
     if (!user) return;
     const { data: r } = await supabase.from("riders").select("*").eq("user_id", user.id).maybeSingle();
     setRider(r);
-    if (!r) return;
-    const { data } = await supabase.from("orders").select("*").eq("merchant_id", r.merchant_id).is("rider_id", null).in("status", ["accepted","preparing"]).order("created_at", { ascending: false });
+    if (!r || !r.is_active || r.status !== "online") {
+      setJobs([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("merchant_id", r.merchant_id)
+      .or(`and(rider_id.is.null,status.in.("accepted","preparing")),and(rider_id.eq.${r.id},status.eq.assigned)`)
+      .order("created_at", { ascending: false });
     setJobs(data ?? []);
   };
   useEffect(() => { load(); }, [user?.id]);
