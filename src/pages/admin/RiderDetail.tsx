@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { ImageUpload } from "@/components/ImageUpload";
+import { SignedImage } from "@/components/SignedImage";
 import { toast } from "sonner";
 
 export default function RiderDetail() {
@@ -33,7 +34,7 @@ export default function RiderDetail() {
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => nav(-1)}>← Back</Button>
       <div className="flex items-center gap-4">
-        {r.profile_image_url ? <img src={r.profile_image_url} className="h-16 w-16 rounded-full object-cover" /> : <div className="h-16 w-16 rounded-full bg-muted" />}
+        {r.profile_image_url ? <SignedImage url={r.profile_image_url} bucket="avatars" className="h-16 w-16 rounded-full object-cover" /> : <div className="h-16 w-16 rounded-full bg-muted" />}
         <div>
           <h1 className="text-2xl font-bold">{r.full_name}</h1>
           <p className="text-sm text-muted-foreground">{r.phone} · <span className="capitalize">{r.vehicle_type ?? "—"}</span> {r.vehicle_plate}</p>
@@ -69,7 +70,7 @@ export default function RiderDetail() {
             <p>License no: <span className="font-medium">{r.license_no ?? "—"}</span></p>
             <p>Expiry: <span className={expired ? "font-semibold text-destructive" : "font-medium"}>{r.license_expiry_date ? new Date(r.license_expiry_date).toLocaleDateString() : "—"}{expired ? " (expired)" : ""}</span></p>
           </div>
-          {r.license_image_url ? <img src={r.license_image_url} className="rounded-md border" /> : <p className="text-sm text-muted-foreground">No license uploaded.</p>}
+          {r.license_image_url ? <SignedImage url={r.license_image_url} bucket="rider-docs" className="rounded-md border" /> : <p className="text-sm text-muted-foreground">No license uploaded.</p>}
         </div>
         <div className="mt-3">
           <ImageUpload

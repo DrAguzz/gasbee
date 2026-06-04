@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
+import { SignedLink } from "@/components/SignedImage";
 
 function ReviewDialog({ row, onDone }: { row: any; onDone: () => void }) {
   const { user } = useAuth();
@@ -36,8 +37,8 @@ function ReviewDialog({ row, onDone }: { row: any; onDone: () => void }) {
             <div><span className="text-muted-foreground">Telefon:</span> {row.contact_phone || "—"}</div>
             <div><span className="text-muted-foreground">Alamat:</span> {row.business_address || "—"}</div>
             <div className="flex gap-3 pt-2">
-              {row.ssm_doc_url && <a href={row.ssm_doc_url} target="_blank" rel="noreferrer" className="text-primary underline">SSM doc</a>}
-              {row.additional_doc_url && <a href={row.additional_doc_url} target="_blank" rel="noreferrer" className="text-primary underline">Additional doc</a>}
+              {row.ssm_doc_url && <SignedLink url={row.ssm_doc_url} bucket="company-docs" target="_blank" rel="noreferrer" className="text-primary underline">SSM doc</SignedLink>}
+              {row.additional_doc_url && <SignedLink url={row.additional_doc_url} bucket="company-docs" target="_blank" rel="noreferrer" className="text-primary underline">Additional doc</SignedLink>}
             </div>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan review (optional)" maxLength={500} />
             <div className="flex gap-2">

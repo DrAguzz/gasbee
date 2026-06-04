@@ -29,15 +29,27 @@ export default function UserProductDetail() {
   const isIndustrial = slug === "industrial-gas";
   const blockedIndustrial = isIndustrial && !isApproved;
 
-  const newCylinderPrice = Number(p.new_cylinder_price || p.selling_price || 0);
-  const refillPrice = Number(p.refill_price || 0);
+  const isLpgRefill = slug === "lpg-refill";
+  const isAccessories = slug === "accessories";
+  const rawNewCylinder = Number(p.new_cylinder_price || 0);
+  // LPG Refill: never include new-cylinder cost. Accessories: use selling_price only.
+  const newCylinderPrice = isLpgRefill ? 0 : (isAccessories ? 0 : (rawNewCylinder || Number(p.selling_price || 0)));
+  const refillPrice = isAccessories ? 0 : Number(p.refill_price || 0);
   const depositAmount = Number(p.deposit_amount || 0);
+  const accessoryPrice = isAccessories ? Number(p.selling_price || 0) : 0;
   const newCylTotal = newCylinderPrice + refillPrice;
 
-  // Auto-detect: prefer "new" if a new cylinder price is set, else refill, else deposit
+  // Auto-detect type by category first
   const type: "refill" | "new" | "deposit" =
-    newCylinderPrice > 0 ? "new" : refillPrice > 0 ? "refill" : "deposit";
-  const price = type === "refill" ? refillPrice : type === "new" ? newCylTotal : depositAmount;
+    isLpgRefill ? "refill"
+    : isAccessories ? "new"
+    : newCylinderPrice > 0 ? "new"
+    : refillPrice > 0 ? "refill"
+    : "deposit";
+  const price = isAccessories ? accessoryPrice
+    : type === "refill" ? refillPrice
+    : type === "new" ? newCylTotal
+    : depositAmount;
 
   const addToCart = () => {
     if (blockedIndustrial) {
@@ -70,7 +82,7 @@ export default function UserProductDetail() {
       <div>
         <div className="text-xs text-muted-foreground">{p.merchants?.name} {p.categories?.name && <>· {p.categories.name}</>}</div>
         <h1 className="text-xl font-bold">{p.name}{p.is_coming_soon && <span className="ml-2 rounded bg-muted px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground">Coming Soon</span>}</h1>
-        {p.cylinder_size_kg && <div className="text-sm text-muted-foreground">{p.cylinder_size_kg} kg cylinder</div>}
+        {!isAccessories && Number(p.cylinder_size_kg) > 0 && <div className="text-sm text-muted-foreground">{p.cylinder_size_kg} kg cylinder</div>}
         {p.description && <p className="mt-2 text-sm">{p.description}</p>}
       </div>
 
@@ -95,17 +107,17 @@ export default function UserProductDetail() {
         </Card>
       )}
 
-      {type === "new" && (
+      {isAccessories ? (
+        <div className="text-sm"><span className="text-muted-foreground">Unit price: </span><span className="font-semibold text-primary">RM {accessoryPrice.toFixed(2)}</span></div>
+      ) : type === "new" ? (
         <Card className="space-y-1 p-3 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">New cylinder (tong)</span><span>RM {newCylinderPrice.toFixed(2)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Refill (gas)</span><span>RM {refillPrice.toFixed(2)}</span></div>
           <div className="flex justify-between border-t pt-1 font-semibold"><span>Unit price</span><span className="text-primary">RM {newCylTotal.toFixed(2)}</span></div>
         </Card>
-      )}
-      {type === "refill" && (
+      ) : type === "refill" ? (
         <div className="text-sm"><span className="text-muted-foreground">Unit price: </span><span className="font-semibold text-primary">RM {refillPrice.toFixed(2)}</span></div>
-      )}
-      {type === "deposit" && (
+      ) : (
         <div className="text-sm"><span className="text-muted-foreground">Deposit: </span><span className="font-semibold text-primary">RM {depositAmount.toFixed(2)}</span></div>
       )}
 

@@ -65,6 +65,10 @@ export default function OrderDetail() {
             </div>
           ))}
           <div className="mt-3 flex justify-between font-semibold"><span>Total</span><span>{fmt(order.total_amount)}</span></div>
+          <div className="mt-1 flex justify-between text-xs text-muted-foreground italic">
+            <span>Payment method</span>
+            <span>{order.payment_method === "fpx" ? "FPX (Online Transfer)" : (order.payment_method === "card" ? "Credit Card" : (order.payment_method === "cod" ? "COD (Cash on Delivery)" : (order.payment_method ?? "—").toUpperCase()))}</span>
+          </div>
         </Card>
         <Card className="p-5 space-y-3">
           <h2 className="font-semibold">Delivery</h2>

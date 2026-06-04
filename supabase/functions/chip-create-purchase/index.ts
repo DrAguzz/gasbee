@@ -11,10 +11,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("CHIP_API_KEY");
-    const brandId = Deno.env.get("CHIP_BRAND_ID");
-    if (!apiKey || !brandId) throw new Error("CHIP not configured");
-
     const auth = req.headers.get("Authorization");
     if (!auth) throw new Error("Unauthorized");
 
@@ -23,6 +19,21 @@ Deno.serve(async (req) => {
     });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
+
+    const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Load gateway config from DB (preferred), fall back to env
+    const { data: gw } = await adminClient
+      .from("payment_gateways")
+      .select("enabled, mode, config")
+      .eq("provider", "chip")
+      .maybeSingle();
+
+    const cfg = (gw?.config ?? {}) as Record<string, string>;
+    const apiKey = cfg.api_key || Deno.env.get("CHIP_API_KEY");
+    const brandId = cfg.brand_id || Deno.env.get("CHIP_BRAND_ID");
+    if (gw && gw.enabled === false) throw new Error("Chip-in payments are disabled by admin");
+    if (!apiKey || !brandId) throw new Error("CHIP not configured");
 
     const { order_id, success_redirect, failure_redirect } = await req.json();
     if (!order_id) throw new Error("order_id required");
@@ -34,13 +45,15 @@ Deno.serve(async (req) => {
     const { data: profile } = await supabase.from("profiles").select("full_name, phone").eq("id", user.id).maybeSingle();
 
     const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/chip-webhook`;
+
     const amountCents = Math.round(Number(order.total_amount) * 100);
 
     const payload = {
       brand_id: brandId,
       success_callback: callbackUrl,
-      success_redirect: success_redirect || undefined,
-      failure_redirect: failure_redirect || undefined,
+      success_redirect: success_redirect || cfg.success_redirect || undefined,
+      failure_redirect: failure_redirect || cfg.failure_redirect || undefined,
+
       reference: order.id,
       purchase: {
         currency: "MYR",
@@ -73,8 +86,7 @@ Deno.serve(async (req) => {
       throw new Error(`CHIP: ${JSON.stringify(data)}`);
     }
 
-    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    await admin.from("payments").insert({
+    await adminClient.from("payments").insert({
       order_id: order.id,
       gateway: "chip",
       gateway_ref: data.id,
@@ -82,6 +94,7 @@ Deno.serve(async (req) => {
       status: "pending",
       raw_payload: data,
     });
+
 
     return new Response(JSON.stringify({ url: data.checkout_url, purchase_id: data.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

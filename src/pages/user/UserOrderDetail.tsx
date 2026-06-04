@@ -185,7 +185,7 @@ export default function UserOrderDetail() {
         <div className="flex justify-between"><span>Delivery</span><span>RM {Number(o.delivery_fee).toFixed(2)}</span></div>
         {Number(o.discount) > 0 && <div className="flex justify-between text-primary"><span>Discount</span><span>- RM {Number(o.discount).toFixed(2)}</span></div>}
         <div className="flex justify-between border-t pt-2 font-bold"><span>Total</span><span className="text-primary">RM {Number(o.total_amount).toFixed(2)}</span></div>
-        <div className="flex justify-between pt-1 text-xs"><span>Payment</span><span className="capitalize">{o.payment_method ?? "—"} · {o.payment_status}</span></div>
+        <div className="flex justify-between pt-1 text-xs"><span>Payment</span><span className="uppercase">{o.payment_method === "fpx" ? "FPX (Online Transfer)" : (o.payment_method === "card" ? "Credit Card" : (o.payment_method === "cod" ? "COD (Cash on Delivery)" : (o.payment_method ?? "—")))} · {o.payment_status}</span></div>
       </Card>
 
       {o.payment_status !== "paid" && o.payment_method && o.payment_method !== "cod" && o.status !== "cancelled" && (

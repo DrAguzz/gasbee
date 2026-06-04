@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
+import { SignedImage } from "@/components/SignedImage";
 
 export default function RiderProfile() {
   const { user } = useAuth();
@@ -27,7 +28,7 @@ export default function RiderProfile() {
       <Card className="p-4">
         <div className="mb-3 flex items-center gap-3">
           {r.profile_image_url
-            ? <img src={r.profile_image_url} className="h-16 w-16 rounded-full object-cover" />
+            ? <SignedImage url={r.profile_image_url} bucket="rider-docs" className="h-16 w-16 rounded-full object-cover" />
             : <div className="h-16 w-16 rounded-full bg-muted" />}
           <div>
             <p className="font-bold">{r.full_name}</p>
@@ -50,7 +51,7 @@ export default function RiderProfile() {
       {r.license_image_url && (
         <Card className="p-4">
           <p className="mb-2 text-sm font-semibold">Driving license</p>
-          <img src={r.license_image_url} className="w-full rounded-md border" />
+          <SignedImage url={r.license_image_url} bucket="rider-docs" className="w-full rounded-md border" />
         </Card>
       )}
     </div>

@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { SignedLink } from "@/components/SignedImage";
 
 const fmt = (n: any) => new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR" }).format(Number(n || 0));
 
@@ -33,7 +34,7 @@ function RefundDetails({ row }: { row: any }) {
             {row.notes && <div><span className="text-muted-foreground">Notes:</span> {row.notes}</div>}
             <div><span className="text-muted-foreground">Status:</span> <StatusBadge value={row.status} /></div>
             <div><span className="text-muted-foreground">Pickup:</span> <StatusBadge value={row.pickup_status} /></div>
-            {row.pickup_proof_url && <div><a className="text-primary underline" href={row.pickup_proof_url} target="_blank" rel="noreferrer">View pickup proof</a></div>}
+            {row.pickup_proof_url && <div><SignedLink url={row.pickup_proof_url} bucket="delivery-proofs" className="text-primary underline" target="_blank" rel="noreferrer">View pickup proof</SignedLink></div>}
             <div><span className="text-muted-foreground">Requested:</span> {new Date(row.created_at).toLocaleString()}</div>
             {row.merchant_acknowledged_at && (
               <div className="rounded bg-muted p-2 text-xs">✓ Merchant acknowledged on {new Date(row.merchant_acknowledged_at).toLocaleString()}</div>

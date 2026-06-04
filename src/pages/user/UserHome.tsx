@@ -38,7 +38,7 @@ export default function UserHome() {
       const [b, c, m, a] = await Promise.all([
         supabase.from("banners").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
-        supabase.from("merchants").select("*").eq("status","active").limit(10),
+        supabase.from("merchants_public").select("*").limit(10),
         supabase.from("addresses").select("*").eq("is_default", true).maybeSingle(),
       ]);
       setBanners(b.data ?? []); setCats(c.data ?? []); setMerchants(m.data ?? []); setAddr(a.data);

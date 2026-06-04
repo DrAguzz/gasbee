@@ -37,6 +37,12 @@ Deno.serve(async (req) => {
     const callerRoles = (rolesRows ?? []).map((r: { role: string }) => r.role);
     const isAdmin = callerRoles.some((r) => ADMIN_ROLES.includes(r));
     if (!isAdmin) return json({ error: "Admin only" }, 403);
+    const callerIsSuper = callerRoles.includes("super_admin");
+
+    const targetIsSuper = async (uid: string) => {
+      const { data } = await admin.from("user_roles").select("role").eq("user_id", uid).eq("role", "super_admin").maybeSingle();
+      return !!data;
+    };
 
     const body = await req.json().catch(() => ({}));
     const action = body?.action as string;
@@ -93,6 +99,12 @@ Deno.serve(async (req) => {
       const { user_id, role } = body;
       if (!user_id || !role) return json({ error: "user_id and role required" }, 400);
       if (!ADMIN_ROLES.includes(role)) return json({ error: "Invalid admin role" }, 400);
+      if (!callerIsSuper && (await targetIsSuper(user_id))) {
+        return json({ error: "Only a Super Admin can modify a Super Admin" }, 403);
+      }
+      if (!callerIsSuper && role === "super_admin") {
+        return json({ error: "Only a Super Admin can grant Super Admin role" }, 403);
+      }
       // Replace all admin roles with the new one
       await admin.from("user_roles").delete().eq("user_id", user_id).in("role", ADMIN_ROLES);
       const { error } = await admin.from("user_roles").insert({ user_id, role });
@@ -103,12 +115,29 @@ Deno.serve(async (req) => {
     if (action === "set_active") {
       const { user_id, is_active } = body;
       if (!user_id || typeof is_active !== "boolean") return json({ error: "user_id and is_active required" }, 400);
+      if (user_id === callerId) return json({ error: "You cannot disable yourself" }, 400);
+      if (!callerIsSuper && (await targetIsSuper(user_id))) {
+        return json({ error: "Only a Super Admin can disable a Super Admin" }, 403);
+      }
       // Disable by banning user; enable by clearing ban
       const { error } = await admin.auth.admin.updateUserById(user_id, {
         ban_duration: is_active ? "none" : "876000h",
       });
       if (error) return json({ error: error.message }, 400);
       await admin.from("profiles").update({ is_active }).eq("id", user_id);
+      return json({ ok: true });
+    }
+
+    if (action === "delete") {
+      const { user_id } = body;
+      if (!user_id) return json({ error: "user_id required" }, 400);
+      if (user_id === callerId) return json({ error: "You cannot delete yourself" }, 400);
+      if (!callerIsSuper && (await targetIsSuper(user_id))) {
+        return json({ error: "Only a Super Admin can delete a Super Admin" }, 403);
+      }
+      await admin.from("user_roles").delete().eq("user_id", user_id).in("role", ADMIN_ROLES);
+      const { error } = await admin.auth.admin.deleteUser(user_id);
+      if (error) return json({ error: error.message }, 400);
       return json({ ok: true });
     }
 

@@ -55,7 +55,7 @@ export default function Reports() {
     });
     autoTable(doc, {
       head: [["Order", "Date", "Method", "Amount"]],
-      body: paid.map((r) => [r.code, new Date(r.created_at).toLocaleDateString(), r.payment_method ?? "—", fmt(Number(r.total_amount))]),
+      body: paid.map((r) => [r.code, new Date(r.created_at).toLocaleDateString(), r.payment_method === "fpx" ? "FPX (Online Transfer)" : (r.payment_method === "card" ? "Credit Card" : (r.payment_method === "cod" ? "COD (Cash on Delivery)" : (r.payment_method ?? "—").toUpperCase())), fmt(Number(r.total_amount))]),
     });
     doc.save(`gasbee-report-${from}-to-${to}.pdf`);
   };
@@ -72,7 +72,7 @@ export default function Reports() {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paid.map((r) => ({
       Order: r.code, Date: new Date(r.created_at).toLocaleDateString(),
-      Method: r.payment_method ?? "", Amount: Number(r.total_amount),
+      Method: r.payment_method === "fpx" ? "FPX (Online Transfer)" : (r.payment_method === "card" ? "Credit Card" : (r.payment_method === "cod" ? "COD (Cash on Delivery)" : (r.payment_method ?? "").toUpperCase())), Amount: Number(r.total_amount),
     }))), "Paid Orders");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(refunded.map((r) => ({
       Order: r.code, Date: new Date(r.created_at).toLocaleDateString(), Amount: Number(r.total_amount),
@@ -118,7 +118,7 @@ export default function Reports() {
               <tr key={i} className="border-t">
                 <td className="p-3 font-mono text-xs">{r.code}</td>
                 <td className="p-3 text-xs">{new Date(r.created_at).toLocaleDateString()}</td>
-                <td className="p-3 capitalize">{r.payment_method ?? "—"}</td>
+                <td className="p-3">{r.payment_method === "fpx" ? "FPX (Online Transfer)" : (r.payment_method === "card" ? "Credit Card" : (r.payment_method === "cod" ? "COD (Cash on Delivery)" : (r.payment_method ?? "—").toUpperCase()))}</td>
                 <td className="p-3">{fmt(Number(r.total_amount))}</td>
               </tr>
             ))}

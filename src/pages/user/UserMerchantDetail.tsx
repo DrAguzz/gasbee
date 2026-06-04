@@ -14,14 +14,20 @@ export default function UserMerchantDetail() {
   const [products, setProducts] = useState<any[]>([]);
   const [addr, setAddr] = useState<any>(null);
   const [category, setCategory] = useState<any>(null);
+  const [categoriesMap, setCategoriesMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!id) return;
-    supabase.from("merchants").select("*").eq("id", id).maybeSingle().then(({ data }) => setM(data));
+    supabase.from("merchants_public").select("*").eq("id", id).maybeSingle().then(({ data }) => setM(data));
     let qb = supabase.from("products").select("*").eq("merchant_id", id).eq("is_active", true);
     if (categoryId) qb = qb.eq("category_id", categoryId);
     qb.then(({ data }) => setProducts(data ?? []));
     supabase.from("addresses").select("*").eq("is_default", true).maybeSingle().then(({ data }) => setAddr(data));
+    supabase.from("categories").select("id,name").then(({ data }) => {
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((c: any) => { map[c.id] = c.name; });
+      setCategoriesMap(map);
+    });
     if (categoryId) {
       supabase.from("categories").select("*").eq("id", categoryId).maybeSingle().then(({ data }) => setCategory(data));
     } else {
@@ -87,6 +93,9 @@ export default function UserMerchantDetail() {
               {cs && <span className="absolute right-1 top-1 rounded bg-muted-foreground/80 px-1.5 py-0.5 text-[10px] font-medium text-background">Coming Soon</span>}
               <div className="p-2">
                 <div className="line-clamp-1 text-sm font-medium">{p.name}</div>
+                {categoriesMap[p.category_id] && (
+                  <Badge variant="outline" className="mt-1 text-[10px]">{categoriesMap[p.category_id]}</Badge>
+                )}
                 <div className="mt-1 text-sm font-bold text-primary">RM {Number(p.refill_price || p.selling_price).toFixed(2)}</div>
               </div>
             </Card>

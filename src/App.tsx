@@ -31,7 +31,10 @@ import Notifications from "@/pages/admin/Notifications";
 import SupportTickets from "@/pages/admin/SupportTickets";
 import AuditLogs from "@/pages/admin/AuditLogs";
 import Settings from "@/pages/admin/Settings";
+import PaymentGateway from "@/pages/admin/PaymentGateway";
+
 import Admins from "@/pages/admin/Admins";
+import LiveMonitoring from "@/pages/admin/LiveMonitoring";
 
 import UserLayout from "@/components/user/UserLayout";
 import UserLogin from "@/pages/user/UserLogin";
@@ -137,6 +140,7 @@ const App = () => (
                   APP_VARIANT === "rider" ? <Navigate to="/merchant/login" replace /> : <AdminLogin />
                 } 
               />
+              <Route path="/live-monitoring" element={<ProtectedRoute allow={ADMIN_ROLES} loginPath="/login"><LiveMonitoring /></ProtectedRoute>} />
               <Route element={<ProtectedRoute allow={ADMIN_ROLES} loginPath="/login"><AdminLayout /></ProtectedRoute>}>
                 <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/orders" element={<Orders />} />
@@ -163,6 +167,8 @@ const App = () => (
               <Route path="/audit-logs" element={<AuditLogs />} />
               <Route path="/admins" element={<Admins />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/payment-gateway" element={<PaymentGateway />} />
+
             </Route>
 
             {/* ===== USER (BUYER) ===== */}

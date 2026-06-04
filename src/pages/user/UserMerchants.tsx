@@ -17,7 +17,7 @@ export default function UserMerchants() {
   const [merchantIdsInCat, setMerchantIdsInCat] = useState<Set<string> | null>(null);
 
   useEffect(() => {
-    supabase.from("merchants").select("*").eq("status", "active").then(({ data }) => setItems(data ?? []));
+    supabase.from("merchants_public").select("*").then(({ data }) => setItems(data ?? []));
     supabase.from("addresses").select("*").eq("is_default", true).maybeSingle().then(({ data }) => setAddr(data));
   }, []);
 

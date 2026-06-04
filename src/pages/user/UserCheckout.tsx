@@ -95,13 +95,21 @@ export default function UserCheckout() {
 
   const applyPromo = async () => {
     if (!promoCode.trim()) return;
-    const { data } = await supabase.from("promotions").select("*").eq("code", promoCode.trim().toUpperCase()).eq("is_active", true).maybeSingle();
+    const { data: rows } = await supabase.rpc("validate_promotion", { _code: promoCode.trim() });
+    const data: any = Array.isArray(rows) ? rows[0] : rows;
     if (!data) { toast.error("Invalid promo code"); setDiscount(0); return; }
+    if (data.applies_to === "merchant" && data.merchant_id && data.merchant_id !== items[0]?.merchant_id) {
+      toast.error("This promo is not valid for this merchant"); setDiscount(0); return;
+    }
     if (data.min_order_amount && subtotal < Number(data.min_order_amount)) { toast.error(`Min order RM${data.min_order_amount}`); return; }
-    const d = data.type === "percent" ? subtotal * (Number(data.value) / 100) : Number(data.value);
+    let d = data.type === "percent" ? subtotal * (Number(data.value) / 100) : Number(data.value);
+    const maxD = data.max_discount;
+    if (maxD != null && d > Number(maxD)) d = Number(maxD);
+    d = Math.min(d, subtotal);
     setDiscount(d);
     toast.success(`Promo applied: -RM${d.toFixed(2)}`);
   };
+
 
   const placeOrder = async () => {
     if (!user || !addrId || items.length === 0) { toast.error("Select address and add items"); return; }
@@ -223,9 +231,14 @@ export default function UserCheckout() {
                 <span>{it.name} × {it.quantity}</span>
                 <span>RM {(it.unit_price * it.quantity).toFixed(2)}</span>
               </div>
-              {it.type === "new" && (it.new_cylinder_price != null || it.refill_price != null) && (
+              {it.type === "new" && it.category_slug !== "accessories" && it.category_slug !== "lpg-refill" && (it.new_cylinder_price != null || it.refill_price != null) && (
                 <div className="mt-1 space-y-0.5 pl-3 text-xs text-muted-foreground">
                   <div className="flex justify-between"><span>· New cylinder (tong)</span><span>RM {(Number(it.new_cylinder_price ?? 0) * it.quantity).toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span>· Refill (gas)</span><span>RM {(Number(it.refill_price ?? 0) * it.quantity).toFixed(2)}</span></div>
+                </div>
+              )}
+              {it.type === "new" && it.category_slug === "lpg-refill" && it.refill_price != null && (
+                <div className="mt-1 space-y-0.5 pl-3 text-xs text-muted-foreground">
                   <div className="flex justify-between"><span>· Refill (gas)</span><span>RM {(Number(it.refill_price ?? 0) * it.quantity).toFixed(2)}</span></div>
                 </div>
               )}
@@ -257,10 +270,15 @@ export default function UserCheckout() {
       <div>
         <div className="mb-2 text-sm font-semibold">Payment method</div>
         <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)} className="grid grid-cols-2 gap-2">
-          {["cod","fpx","card","ewallet"].map((m) => (
-            <Card key={m} className="flex items-center gap-2 p-3">
-              <RadioGroupItem value={m} id={m} />
-              <Label htmlFor={m} className="cursor-pointer text-sm capitalize">{m}</Label>
+          {[
+            { id: "cod", label: <>COD <br />(Cash on Delivery)</> },
+            { id: "fpx", label: <>FPX <br />(Online Transfer)</> },
+            { id: "card", label: "Credit Card" },
+            { id: "ewallet", label: "E-Wallet" }
+          ].map((m) => (
+            <Card key={m.id} className="flex items-center gap-2 p-3">
+              <RadioGroupItem value={m.id} id={m.id} />
+              <Label htmlFor={m.id} className="cursor-pointer text-sm">{m.label}</Label>
             </Card>
           ))}
         </RadioGroup>
@@ -334,7 +352,7 @@ export default function UserCheckout() {
             {addr && (
               <div><span className="text-muted-foreground">Deliver to: </span><span className="font-medium">{addr.label ?? "Address"} — {addr.address_line1}, {addr.postcode} {addr.city}</span></div>
             )}
-            <div><span className="text-muted-foreground">Payment: </span><span className="font-medium uppercase">{paymentMethod}</span></div>
+            <div><span className="text-muted-foreground">Payment: </span><span className="font-medium">{paymentMethod === "fpx" ? "FPX (Online Transfer)" : (paymentMethod === "card" ? "Credit Card" : (paymentMethod === "cod" ? "COD (Cash on Delivery)" : paymentMethod.toUpperCase()))}</span></div>
             <div><span className="text-muted-foreground">Total: </span><span className="font-bold text-primary">RM {total.toFixed(2)}</span></div>
           </div>
           <AlertDialogFooter>

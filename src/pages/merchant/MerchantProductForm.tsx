@@ -19,7 +19,6 @@ const schema = z.object({
   refill_price: z.coerce.number().nonnegative(),
   selling_price: z.coerce.number().nonnegative(),
   new_cylinder_price: z.coerce.number().nonnegative(),
-  deposit_amount: z.coerce.number().nonnegative(),
   stock_qty: z.coerce.number().int().nonnegative(),
   low_stock_threshold: z.coerce.number().int().nonnegative(),
   image_url: z.string().trim().url().optional().or(z.literal("")).nullable(),
@@ -34,8 +33,12 @@ export default function MerchantProductForm() {
   const [cats, setCats] = useState<any[]>([]);
   const [form, setForm] = useState<any>({
     name: "", description: "", cylinder_size_kg: 14, refill_price: 0, selling_price: 0,
-    new_cylinder_price: 0, deposit_amount: 0, stock_qty: 0, low_stock_threshold: 5, image_url: "", category_id: "", is_coming_soon: false,
+    new_cylinder_price: 0, stock_qty: 0, low_stock_threshold: 5, image_url: "", category_id: "", is_coming_soon: false,
   });
+
+  const selectedCat = cats.find((c) => c.id === form.category_id);
+  const isAccessories = selectedCat?.name?.toLowerCase().includes("accessories");
+  const isLPGRefill = selectedCat?.name?.toLowerCase().includes("lpg refill");
 
   useEffect(() => { supabase.from("categories").select("*").eq("is_active", true).then(({ data }) => setCats(data ?? [])); }, []);
   useEffect(() => {
@@ -47,7 +50,23 @@ export default function MerchantProductForm() {
     if (!merchant) return;
     const parsed = schema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
+    if (isAccessories && (!form.selling_price || Number(form.selling_price) <= 0)) {
+      toast.error("Harga is required for accessories");
+      return;
+    }
+    if (!isAccessories && (!form.refill_price || Number(form.refill_price) <= 0)) {
+      toast.error("Harga Refill / Gas is required");
+      return;
+    }
     const payload: any = { ...parsed.data, image_url: parsed.data.image_url || null, category_id: form.category_id || null, merchant_id: merchant.id, name: parsed.data.name! };
+    if (isAccessories) {
+      payload.cylinder_size_kg = 0;
+      payload.refill_price = 0;
+      payload.new_cylinder_price = 0;
+    }
+    if (isLPGRefill) {
+      payload.new_cylinder_price = 0;
+    }
     const res = isEdit
       ? await supabase.from("products").update(payload).eq("id", id!)
       : await supabase.from("products").insert([payload]);
@@ -62,25 +81,45 @@ export default function MerchantProductForm() {
         <div><Label>Description</Label><Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={1000} /></div>
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Category</Label>
-            <Select value={form.category_id ?? ""} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+            <Select value={form.category_id ?? ""} onValueChange={(v) => {
+              const cat = cats.find((c) => c.id === v);
+              const isAcc = cat?.name?.toLowerCase().includes("accessories");
+              const isRefill = cat?.name?.toLowerCase().includes("lpg refill");
+              setForm({
+                ...form,
+                category_id: v,
+                ...(isAcc ? { cylinder_size_kg: 0, refill_price: 0, new_cylinder_price: 0 } : {}),
+                ...(isRefill ? { new_cylinder_price: 0 } : {})
+              });
+            }}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>{cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label>Cylinder size (kg)</Label><Input type="number" step="0.1" value={form.cylinder_size_kg ?? ""} onChange={(e) => setForm({ ...form, cylinder_size_kg: e.target.value })} /></div>
+          {isAccessories ? (
+            <div>
+              <Label>Harga (RM) *</Label>
+              <Input type="number" step="0.01" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: e.target.value })} />
+            </div>
+          ) : (
+            <div><Label>Cylinder size (kg)</Label><Input type="number" step="0.1" value={form.cylinder_size_kg ?? ""} onChange={(e) => setForm({ ...form, cylinder_size_kg: e.target.value })} /></div>
+          )}
         </div>
+        {!isAccessories && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Harga Refill / Gas (RM) *</Label>
+              <Input type="number" step="0.01" value={form.refill_price} onChange={(e) => setForm({ ...form, refill_price: e.target.value })} />
+              <p className="mt-1 text-xs text-muted-foreground">Harga tukar gas sahaja</p>
+            </div>
+            <div>
+              <Label className={isLPGRefill ? "text-muted-foreground" : ""}>Harga New Tong / Cylinder (RM)</Label>
+              <Input type="number" step="0.01" value={form.new_cylinder_price} onChange={(e) => setForm({ ...form, new_cylinder_price: e.target.value })} disabled={isLPGRefill} className={isLPGRefill ? "bg-muted" : ""} />
+              <p className="mt-1 text-xs text-muted-foreground">{isLPGRefill ? "Tidak berkaitan untuk LPG refill" : "Harga tong kosong. Beli new = tong + refill"}</p>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Harga Refill / Gas (RM)</Label>
-            <Input type="number" step="0.01" value={form.refill_price} onChange={(e) => setForm({ ...form, refill_price: e.target.value })} />
-            <p className="mt-1 text-xs text-muted-foreground">Harga tukar gas sahaja</p>
-          </div>
-          <div>
-            <Label>Harga New Tong / Cylinder (RM)</Label>
-            <Input type="number" step="0.01" value={form.new_cylinder_price} onChange={(e) => setForm({ ...form, new_cylinder_price: e.target.value })} />
-            <p className="mt-1 text-xs text-muted-foreground">Harga tong kosong. Beli new = tong + refill</p>
-          </div>
-          <div><Label>Deposit (RM)</Label><Input type="number" step="0.01" value={form.deposit_amount} onChange={(e) => setForm({ ...form, deposit_amount: e.target.value })} /></div>
           <div><Label>Stock qty</Label><Input type="number" value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: e.target.value })} /></div>
           <div><Label>Low-stock threshold</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
         </div>

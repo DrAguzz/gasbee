@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Pencil, KeyRound, ShieldOff, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, KeyRound, ShieldOff, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const ADMIN_ROLE_OPTIONS = [
   { value: "super_admin", label: "Super Admin" },
@@ -30,12 +31,14 @@ interface AdminRow {
 }
 
 export default function Admins() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const callerIsSuper = roles.includes("super_admin" as any);
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openCreate, setOpenCreate] = useState(false);
   const [editing, setEditing] = useState<AdminRow | null>(null);
   const [resetting, setResetting] = useState<AdminRow | null>(null);
+  const [deleting, setDeleting] = useState<AdminRow | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [createForm, setCreateForm] = useState({
@@ -120,6 +123,22 @@ export default function Admins() {
     toast({ title: row.is_active ? "Admin disabled" : "Admin enabled" });
     load();
   };
+  const removeAdmin = async () => {
+    if (!deleting) return;
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-manage-admins", {
+      body: { action: "delete", user_id: deleting.id },
+    });
+    setBusy(false);
+    if (error || data?.error) {
+      toast({ title: "Failed", description: error?.message ?? data?.error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Admin deleted" });
+    setDeleting(null);
+    load();
+  };
+
 
   return (
     <div className="space-y-6">
@@ -179,6 +198,11 @@ export default function Admins() {
                   {r.id !== user?.id && (
                     <Button size="sm" variant="outline" onClick={() => toggleActive(r)}>
                       {r.is_active ? <ShieldOff className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                    </Button>
+                  )}
+                  {r.id !== user?.id && (r.role !== "super_admin" || callerIsSuper) && (
+                    <Button size="sm" variant="outline" onClick={() => setDeleting(r)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   )}
                 </td>
@@ -252,6 +276,22 @@ export default function Admins() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete admin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove <strong>{deleting?.email}</strong> and revoke their admin access. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={removeAdmin} disabled={busy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

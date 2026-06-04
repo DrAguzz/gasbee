@@ -230,6 +230,13 @@ export type Database = {
             referencedRelation: "merchants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "commissions_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       company_verifications: {
@@ -410,6 +417,13 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
             referencedColumns: ["id"]
           },
           {
@@ -815,13 +829,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_rider_id_fkey"
             columns: ["rider_id"]
             isOneToOne: false
             referencedRelation: "riders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "orders_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders_public"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      payment_gateways: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          mode: string
+          provider: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          mode?: string
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          mode?: string
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       payments: {
         Row: {
@@ -943,6 +1004,13 @@ export type Database = {
             referencedRelation: "merchants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "products_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -977,12 +1045,15 @@ export type Database = {
       }
       promotions: {
         Row: {
+          applies_to: string
           code: string
           created_at: string
           description: string | null
           ends_at: string | null
           id: string
           is_active: boolean
+          max_discount: number | null
+          merchant_id: string | null
           min_order_amount: number
           starts_at: string | null
           type: Database["public"]["Enums"]["promotion_type"]
@@ -992,12 +1063,15 @@ export type Database = {
           value: number
         }
         Insert: {
+          applies_to?: string
           code: string
           created_at?: string
           description?: string | null
           ends_at?: string | null
           id?: string
           is_active?: boolean
+          max_discount?: number | null
+          merchant_id?: string | null
           min_order_amount?: number
           starts_at?: string | null
           type?: Database["public"]["Enums"]["promotion_type"]
@@ -1007,12 +1081,15 @@ export type Database = {
           value?: number
         }
         Update: {
+          applies_to?: string
           code?: string
           created_at?: string
           description?: string | null
           ends_at?: string | null
           id?: string
           is_active?: boolean
+          max_discount?: number | null
+          merchant_id?: string | null
           min_order_amount?: number
           starts_at?: string | null
           type?: Database["public"]["Enums"]["promotion_type"]
@@ -1213,6 +1290,13 @@ export type Database = {
             referencedRelation: "merchants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "riders_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       settlements: {
@@ -1264,6 +1348,13 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1407,11 +1498,140 @@ export type Database = {
             referencedRelation: "merchants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_roles_merchant_fk"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      merchants_public: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string | null
+          delivery_radius_km: number | null
+          description: string | null
+          id: string | null
+          latitude: number | null
+          logo_url: string | null
+          longitude: number | null
+          name: string | null
+          postcode: string | null
+          rating: number | null
+          slug: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["merchant_status"] | null
+          total_orders: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          delivery_radius_km?: number | null
+          description?: string | null
+          id?: string | null
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name?: string | null
+          postcode?: string | null
+          rating?: number | null
+          slug?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["merchant_status"] | null
+          total_orders?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          delivery_radius_km?: number | null
+          description?: string | null
+          id?: string | null
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name?: string | null
+          postcode?: string | null
+          rating?: number | null
+          slug?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["merchant_status"] | null
+          total_orders?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      riders_public: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string | null
+          is_active: boolean | null
+          merchant_id: string | null
+          profile_image_url: string | null
+          rating: number | null
+          status: Database["public"]["Enums"]["rider_status"] | null
+          total_deliveries: number | null
+          updated_at: string | null
+          user_id: string | null
+          vehicle_plate: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          merchant_id?: string | null
+          profile_image_url?: string | null
+          rating?: number | null
+          status?: Database["public"]["Enums"]["rider_status"] | null
+          total_deliveries?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          merchant_id?: string | null
+          profile_image_url?: string | null
+          rating?: number | null
+          status?: Database["public"]["Enums"]["rider_status"] | null
+          total_deliveries?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "riders_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "riders_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       delete_email: {
@@ -1448,6 +1668,19 @@ export type Database = {
         }[]
       }
       user_merchant_id: { Args: { _user_id: string }; Returns: string }
+      validate_promotion: {
+        Args: { _code: string }
+        Returns: {
+          applies_to: string
+          code: string
+          id: string
+          max_discount: number
+          merchant_id: string
+          min_order_amount: number
+          type: Database["public"]["Enums"]["promotion_type"]
+          value: number
+        }[]
+      }
     }
     Enums: {
       app_role:
