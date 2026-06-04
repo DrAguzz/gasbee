@@ -66,5 +66,5 @@ if (fs.existsSync(manifestPath)) {
 
 // 5. Update src/variant.ts
 const variantTsPath = path.join(__dirname, 'src', 'variant.ts');
-fs.writeFileSync(variantTsPath, `export const APP_VARIANT = '${variant}' as 'user' | 'rider';\n`, 'utf8');
-console.log(`Updated src/variant.ts -> APP_VARIANT: ${variant}`);
+fs.writeFileSync(variantTsPath, `export const APP_VARIANT = (import.meta.env.VITE_APP_MODE || 'web') as 'user' | 'rider' | 'web';\n`, 'utf8');
+console.log(`Updated src/variant.ts -> APP_VARIANT set to dynamic with 'web' fallback`);
