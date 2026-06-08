@@ -63,12 +63,7 @@ export default function UserOrderDetail() {
   };
 
   const a = o.address_snapshot ?? {};
-  const markers: any[] = [];
-  if (a.latitude) markers.push({ lat: Number(a.latitude), lng: Number(a.longitude), label: "Delivery address" });
-  if (o.merchants?.latitude) markers.push({ lat: Number(o.merchants.latitude), lng: Number(o.merchants.longitude), label: o.merchants.name });
-  if (riderLoc) markers.push({ lat: riderLoc.lat, lng: riderLoc.lng, label: "Rider 🛵" });
 
-  const trackable = ["rider_accepted","arrived_at_merchant","picked_up","on_delivery","arrived_at_customer","out_for_delivery"].includes(o.status);
 
   return (
     <div className="space-y-4">
@@ -133,25 +128,100 @@ export default function UserOrderDetail() {
         </div>
       )}
 
-      {trackable && markers.length > 0 && (
-        <Card className="p-2">
-          <div className="mb-1 px-2 pt-1 text-sm font-semibold">Live tracking</div>
-          <MapPicker lat={riderLoc?.lat ?? (a.latitude ? Number(a.latitude) : null)} lng={riderLoc?.lng ?? (a.longitude ? Number(a.longitude) : null)} readOnly markers={markers} height={260} />
-          {!riderLoc && o.riders && <p className="px-2 pb-1 pt-1 text-[11px] text-muted-foreground">Waiting for rider GPS…</p>}
-        </Card>
-      )}
+      {(() => {
+        // Live rider tracking — available once rider has accepted the job, regardless of payment method (COD or online).
+        const isCod = o.payment_method === "cod";
+        const paymentOk = isCod || o.payment_status === "paid";
+        const PRE_PICKUP = ["rider_accepted", "arrived_at_merchant"];
+        const DELIVERY = ["picked_up", "on_delivery", "arrived_at_customer"];
+        const isPickup = PRE_PICKUP.includes(o.status);
+        const isDelivery = DELIVERY.includes(o.status);
+        const riderAccepted = isPickup || isDelivery || o.status === "delivered";
+
+        // Show waiting card after rider assigned but not yet accepted
+        if (paymentOk && o.rider_id && o.status === "assigned") {
+          return (
+            <Card className="border-amber-500 bg-amber-500/5 p-3 text-sm">
+              <div className="font-semibold">⏳ Waiting for rider to accept the delivery job.</div>
+              <p className="mt-1 text-xs text-muted-foreground">Live tracking will appear here once the rider accepts.</p>
+            </Card>
+          );
+        }
+
+        if (!paymentOk || !o.rider_id || !riderAccepted || !isPickup && !isDelivery) return null;
+
+        const target = isPickup
+          ? (o.merchants?.latitude ? { lat: Number(o.merchants.latitude), lng: Number(o.merchants.longitude), label: o.merchants.name } : null)
+          : (a.latitude ? { lat: Number(a.latitude), lng: Number(a.longitude), label: "Delivery address" } : null);
+
+        const phaseMarkers: any[] = [];
+        if (target) phaseMarkers.push(target);
+        if (riderLoc) phaseMarkers.push({ lat: riderLoc.lat, lng: riderLoc.lng, label: "Rider 🛵" });
+
+        // ETA: haversine distance assuming 30 km/h
+        let etaMin: number | null = null;
+        if (riderLoc && target) {
+          const toRad = (d: number) => (d * Math.PI) / 180;
+          const R = 6371;
+          const dLat = toRad(target.lat - riderLoc.lat);
+          const dLng = toRad(target.lng - riderLoc.lng);
+          const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(riderLoc.lat)) * Math.cos(toRad(target.lat)) * Math.sin(dLng / 2) ** 2;
+          const km = R * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+          etaMin = Math.max(1, Math.round((km / 30) * 60));
+        }
+
+        const phaseLabel = isPickup
+          ? "🛵 Rider is going to collect your gas"
+          : "📦 Rider is on the way to your location";
+        const statusDetail: Record<string, string> = {
+          rider_accepted: "Rider accepted — heading to merchant",
+          arrived_at_merchant: "Arrived at merchant",
+          picked_up: "Gas collected — leaving merchant",
+          on_delivery: "On the way to you",
+          arrived_at_customer: "Rider has arrived",
+        };
+
+        return (
+          <Card className="overflow-hidden p-0">
+            <div className={`p-3 ${isPickup ? "bg-amber-500/10" : "bg-primary/10"}`}>
+              <div className="text-sm font-semibold">{phaseLabel}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                {statusDetail[o.status] ?? o.status.replace(/_/g, " ")}
+                {etaMin != null && <span> · ETA ~{etaMin} min</span>}
+              </div>
+            </div>
+            {phaseMarkers.length > 0 && (
+              <MapPicker
+                lat={riderLoc?.lat ?? target?.lat ?? null}
+                lng={riderLoc?.lng ?? target?.lng ?? null}
+                readOnly
+                markers={phaseMarkers}
+                height={260}
+              />
+            )}
+            {!riderLoc && (
+              <p className="px-3 py-2 text-[11px] text-muted-foreground">Waiting for rider GPS signal…</p>
+            )}
+          </Card>
+        );
+      })()}
 
       <Card className="space-y-1 p-3 text-sm">
-        <div className="font-semibold">Merchant</div>
-        <div>{o.merchants?.name}</div>
+        <div className="text-xs text-muted-foreground">Merchant</div>
+        <div className="text-base font-semibold">{o.merchants?.name ?? "—"}</div>
         {o.merchants?.phone && <div className="text-xs text-muted-foreground">{o.merchants.phone}</div>}
       </Card>
 
       {o.riders && (
         <Card className="space-y-2 p-3 text-sm">
-          <div className="font-semibold">Rider</div>
-          <div>{o.riders.full_name} {o.riders.vehicle_type && <span className="text-xs text-muted-foreground">· {o.riders.vehicle_type} {o.riders.vehicle_plate ?? ""}</span>}</div>
-          <div className="text-xs text-muted-foreground">{o.riders.phone}</div>
+          <div className="font-semibold">Your rider</div>
+          <div>{o.riders.full_name}</div>
+          {(o.riders.vehicle_type || o.riders.vehicle_plate) && (
+            <div className="text-xs text-muted-foreground">
+              🛵 {o.riders.vehicle_type ?? ""} {o.riders.vehicle_plate ? <span className="font-mono font-semibold">{o.riders.vehicle_plate}</span> : null}
+            </div>
+          )}
+          {o.riders.phone && <div className="text-xs text-muted-foreground">{o.riders.phone}</div>}
           {o.riders.phone && (
             <Button asChild size="sm" className="w-full"><a href={`tel:${o.riders.phone}`}><Phone className="mr-1 h-3 w-3" />Call rider</a></Button>
           )}

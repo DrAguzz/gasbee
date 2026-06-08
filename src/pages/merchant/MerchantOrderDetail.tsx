@@ -88,12 +88,23 @@ export default function MerchantOrderDetail() {
   };
 
 
+  const paid = o.payment_status === "paid";
+  const isCod = o.payment_method === "cod";
+  const acceptedStatuses = ["accepted","preparing","assigned","rider_accepted","arrived_at_merchant","picked_up","on_delivery","arrived_at_customer","delivered"];
+  const orderAccepted = acceptedStatuses.includes(o.status);
+  const canDecide = o.status === "pending" && (isCod || paid);
+  const canAssignRider = orderAccepted && (isCod || paid);
+  const paymentStatusLabel = isCod ? (o.status === "delivered" ? "Collected" : "To be collected") : o.payment_status;
+  const orderStatusLabel = (isCod && o.status === "pending") ? "Pending Merchant Confirmation" : o.status;
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => nav(-1)}>← Back</Button>
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold">{o.code}</h1><p className="text-sm text-muted-foreground">{new Date(o.created_at).toLocaleString()}</p></div>
-        <div className="flex gap-2"><StatusBadge value={o.status} /><StatusBadge value={o.payment_status} /></div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex gap-2"><StatusBadge value={orderStatusLabel} /><StatusBadge value={paymentStatusLabel} /></div>
+          <div className="text-xs text-muted-foreground">Payment method: <span className="font-semibold uppercase">{o.payment_method}</span></div>
+        </div>
       </div>
 
       <Card className="p-4">
@@ -104,19 +115,31 @@ export default function MerchantOrderDetail() {
         {o.notes && <p className="mt-2 text-xs italic">Notes: {o.notes}</p>}
       </Card>
 
+      {!isCod && !paid && (
+        <Card className="p-4 border-amber-500/40 bg-amber-500/10">
+          <p className="text-sm font-medium">⏳ Waiting for payment confirmation. Merchant actions will be available once payment is confirmed.</p>
+        </Card>
+      )}
+      {isCod && o.status === "pending" && (
+        <Card className="p-4 border-amber-500/40 bg-amber-500/10">
+          <p className="text-sm font-medium">📞 Please confirm this COD order with the customer before assigning a rider.</p>
+        </Card>
+      )}
+
       <Card className="p-4">
         <h2 className="mb-2 font-semibold">Assign Rider</h2>
         <div className="flex gap-2">
-          <Select value={riderId || "none"} onValueChange={(v) => setRiderId(v === "none" ? "" : v)}>
+          <Select value={riderId || "none"} onValueChange={(v) => setRiderId(v === "none" ? "" : v)} disabled={!canAssignRider}>
             <SelectTrigger className="max-w-xs"><SelectValue placeholder="Select rider" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">— Unassigned —</SelectItem>
               {riders.map((r) => <SelectItem key={r.id} value={r.id}>{r.full_name} · {r.phone}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button onClick={() => assignRider(riderId)}>{o.rider_id ? "Update" : "Assign"}</Button>
+          <Button onClick={() => assignRider(riderId)} disabled={!canAssignRider}>{o.rider_id ? "Update" : "Assign"}</Button>
         </div>
         {riders.length === 0 && <p className="mt-2 text-xs text-muted-foreground">No active riders. Add riders in the Riders page.</p>}
+        {!canAssignRider && !orderAccepted && <p className="mt-2 text-xs text-muted-foreground">{isCod ? "Rider assignment unlocks after you mark the COD order as accepted." : "Rider assignment unlocks after payment is confirmed and order is accepted."}</p>}
         {o.rider_id && (() => {
           const ar = riders.find((x) => x.id === o.rider_id);
           const accepted = ["rider_accepted","arrived_at_merchant","picked_up","on_delivery","arrived_at_customer","delivered"].includes(o.status);
@@ -147,8 +170,8 @@ export default function MerchantOrderDetail() {
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        {o.status === "pending" && <Button variant="destructive" onClick={() => setRejectOpen(true)}>Reject</Button>}
-        {NEXT[o.status] && <Button onClick={() => updateStatus(NEXT[o.status])}>Mark as {NEXT[o.status].replace(/_/g, " ")}</Button>}
+        {o.status === "pending" && <Button variant="destructive" onClick={() => setRejectOpen(true)} disabled={!canDecide}>Reject</Button>}
+        {NEXT[o.status] && <Button onClick={() => updateStatus(NEXT[o.status])} disabled={o.status === "pending" ? !canDecide : !(isCod || paid)}>Mark as {NEXT[o.status].replace(/_/g, " ")}</Button>}
       </div>
 
       {o.failure_reason && (o.status === "cancelled" || o.rejected_at) && (
