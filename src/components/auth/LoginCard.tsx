@@ -11,6 +11,8 @@ import { Logo } from "@/components/Logo";
 import { homeForRoles, AppRole } from "@/hooks/useAuth";
 import authBg from "@/assets/auth-bg.png";
 import { Eye, EyeOff } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+
 
 interface Props {
   title: string;
@@ -36,8 +38,17 @@ export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLi
     e.preventDefault();
     if (!forgotEmail) return;
     setForgotBusy(true);
+    
+    const isNative = Capacitor.isNativePlatform();
+    const origin = window.location.origin;
+    
+    // Gunakan domain gasbee.vercel.app untuk mobile native atau jika bukan localhost
+    const redirectUrl = isNative || !origin.includes("localhost")
+      ? `https://gasbee.vercel.app${resetRedirectPath}`
+      : `${origin}${resetRedirectPath}`;
+
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${window.location.origin}${resetRedirectPath}`,
+      redirectTo: redirectUrl,
     });
     setForgotBusy(false);
     if (error) return toast.error(error.message);

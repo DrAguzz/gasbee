@@ -1,7 +1,7 @@
 // Plays a beep using WebAudio (no asset needed)
 export function playBeep(times = 3) {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     let t = ctx.currentTime;
     for (let i = 0; i < times; i++) {
       const osc = ctx.createOscillator();
@@ -16,5 +16,7 @@ export function playBeep(times = 3) {
       osc.stop(t + 0.4);
       t += 0.5;
     }
-  } catch {}
+  } catch {
+    // WebAudio API is not supported or failed to play sound
+  }
 }

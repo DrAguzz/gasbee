@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { RealtimeChannel } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Phone, Navigation, MapPin, Package, Home } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
+import { Capacitor } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
 
 const FLOW: Record<string, string> = {
   assigned: "arrived_at_merchant",
@@ -25,7 +28,9 @@ export default function RiderActive() {
   const [orders, setOrders] = useState<any[]>([]);
   const [merchants, setMerchants] = useState<Record<string, any>>({});
   const [proofUrls, setProofUrls] = useState<Record<string, string | null>>({});
-  const watchRef = useRef<number | null>(null);
+  const watchRef = useRef<any>(null);
+  const webWatchRef = useRef<number | null>(null);
+  const orderChannelsRef = useRef<Record<string, RealtimeChannel>>({});
 
   const load = async () => {
     if (!user) return;
@@ -66,17 +71,149 @@ export default function RiderActive() {
     return () => { supabase.removeChannel(ch); };
   }, [rider?.id]);
 
+  // Manage broadcast channels for active orders
   useEffect(() => {
-    if (!rider || orders.length === 0 || !navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      async (pos) => {
-        await supabase.from("riders").update({ current_lat: pos.coords.latitude, current_lng: pos.coords.longitude, status: "on_delivery" as any }).eq("id", rider.id);
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 }
-    );
-    watchRef.current = id;
-    return () => { if (watchRef.current != null) navigator.geolocation.clearWatch(watchRef.current); };
+    if (!orders.length) {
+      // Clean up all channels
+      Object.keys(orderChannelsRef.current).forEach((id) => {
+        supabase.removeChannel(orderChannelsRef.current[id]);
+      });
+      orderChannelsRef.current = {};
+      return;
+    }
+
+    const activeOrderIds = new Set(orders.map((o) => o.id));
+
+    // Clean up channels that are no longer active
+    Object.keys(orderChannelsRef.current).forEach((id) => {
+      if (!activeOrderIds.has(id)) {
+        supabase.removeChannel(orderChannelsRef.current[id]);
+        delete orderChannelsRef.current[id];
+      }
+    });
+
+    // Create channels for new active orders
+    orders.forEach((o) => {
+      if (!orderChannelsRef.current[o.id]) {
+        console.log("Subscribing to channel order-", o.id);
+        const ch = supabase.channel(`order-${o.id}`).subscribe((status) => {
+          console.log(`Channel order-${o.id} subscription status:`, status);
+        });
+        orderChannelsRef.current[o.id] = ch;
+      }
+    });
+
+    return () => {
+      // Clean up all channels on unmount
+      Object.keys(orderChannelsRef.current).forEach((id) => {
+        supabase.removeChannel(orderChannelsRef.current[id]);
+      });
+      orderChannelsRef.current = {};
+    };
+  }, [orders]);
+
+  useEffect(() => {
+    if (!rider || orders.length === 0) return;
+    
+    let active = true;
+
+    const broadcastLocation = (lat: number, lng: number) => {
+      Object.keys(orderChannelsRef.current).forEach((orderId) => {
+        const ch = orderChannelsRef.current[orderId];
+        if (ch) {
+          console.log(`Broadcasting location to order-${orderId}:`, lat, lng);
+          ch.send({
+            type: "broadcast",
+            event: "location",
+            payload: { lat, lng }
+          }).then((res) => {
+            console.log(`Broadcast send result to order-${orderId}:`, res);
+          }).catch((err) => {
+            console.error(`Broadcast error on order-${orderId}:`, err);
+          });
+        }
+      });
+    };
+
+    const startWatching = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          console.log("RiderActive: Checking location permissions...");
+          let permStatus = await Geolocation.checkPermissions();
+          console.log("RiderActive: Geolocation permission check result:", JSON.stringify(permStatus));
+          if (permStatus.location !== "granted") {
+            console.log("RiderActive: Location permission not granted. Requesting...");
+            permStatus = await Geolocation.requestPermissions();
+            console.log("RiderActive: Geolocation permission request result:", JSON.stringify(permStatus));
+          }
+          if (permStatus.location !== "granted") {
+            console.warn("RiderActive: Location permission denied.");
+            toast.error("Kebenaran lokasi ditolak. Sila benarkan akses lokasi untuk mengemas kini kedudukan anda.");
+            return;
+          }
+
+          if (!active) return;
+          console.log("RiderActive: Starting location watch via Capacitor...");
+          const id = await Geolocation.watchPosition(
+            { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 },
+            async (position, err) => {
+              if (err) {
+                console.error("RiderActive watch error:", err);
+                return;
+              }
+              if (position && active) {
+                console.log("RiderActive location update:", position.coords.latitude, position.coords.longitude);
+                await supabase.from("riders").update({ 
+                  current_lat: position.coords.latitude, 
+                  current_lng: position.coords.longitude 
+                }).eq("id", rider.id);
+                broadcastLocation(position.coords.latitude, position.coords.longitude);
+              }
+            }
+          );
+          watchRef.current = id;
+        } catch (error) {
+          console.error("RiderActive Geolocation error:", error);
+        }
+      } else {
+        if (!navigator.geolocation) return;
+        console.log("RiderActive: Starting location watch via browser navigator...");
+        const id = navigator.geolocation.watchPosition(
+          async (pos) => {
+            if (active) {
+              console.log("RiderActive web location update:", pos.coords.latitude, pos.coords.longitude);
+              await supabase.from("riders").update({ 
+                current_lat: pos.coords.latitude, 
+                current_lng: pos.coords.longitude 
+              }).eq("id", rider.id);
+              broadcastLocation(pos.coords.latitude, pos.coords.longitude);
+            }
+          },
+          (err) => {
+            console.error("RiderActive web watch error:", err);
+          },
+          { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 }
+        );
+        webWatchRef.current = id;
+      }
+    };
+
+    startWatching();
+
+    return () => {
+      active = false;
+      if (watchRef.current !== null) {
+        console.log("Clearing Capacitor location watch:", watchRef.current);
+        const idToClear = watchRef.current;
+        Geolocation.clearWatch({ id: idToClear }).catch(err => console.error("Error clearing watch:", err));
+        watchRef.current = null;
+      }
+      if (webWatchRef.current !== null && navigator.geolocation) {
+        console.log("Clearing web location watch:", webWatchRef.current);
+        navigator.geolocation.clearWatch(webWatchRef.current);
+        webWatchRef.current = null;
+      }
+    };
   }, [rider?.id, orders.length]);
 
   const advance = async (o: any) => {

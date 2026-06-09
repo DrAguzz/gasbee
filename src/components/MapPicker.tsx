@@ -2,13 +2,58 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Default marker icon fix
-const icon = L.icon({
+// Default marker icon fix for picker mode
+const defaultIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41], iconAnchor: [12, 41],
 });
+
+// Helper to create custom HTML markers for tracking mode
+const getMarkerIcon = (label?: string, color?: string) => {
+  const lbl = (label ?? "").toLowerCase();
+  const isRider = lbl.includes("rider") || lbl.includes("🛵");
+  const isMerchant = lbl.includes("merchant");
+
+  if (isRider) {
+    return L.divIcon({
+      html: `
+        <div class="relative flex items-center justify-center w-9 h-9 rounded-full bg-amber-500 text-white shadow-lg border-2 border-white animate-pulse">
+          <span class="text-base">🛵</span>
+        </div>
+      `,
+      className: "custom-rider-icon",
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+  }
+
+  if (isMerchant) {
+    return L.divIcon({
+      html: `
+        <div class="relative flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white shadow-lg border-2 border-white">
+          <span class="text-base">🏪</span>
+        </div>
+      `,
+      className: "custom-merchant-icon",
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+  }
+
+  // Default destination/home pin
+  return L.divIcon({
+    html: `
+      <div class="relative flex items-center justify-center w-9 h-9 rounded-full bg-red-500 text-white shadow-lg border-2 border-white">
+        <span class="text-base">📍</span>
+      </div>
+    `,
+    className: "custom-destination-icon",
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+};
 
 interface Props {
   lat?: number | null;
@@ -35,17 +80,21 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
     mapRef.current = map;
 
     if (lat != null && lng != null) {
-      markerRef.current = L.marker([lat, lng], { icon, draggable: !readOnly }).addTo(map);
-      if (!readOnly) markerRef.current.on("dragend", (e) => {
-        const p = (e.target as L.Marker).getLatLng();
-        onChange?.(p.lat, p.lng);
-      });
+      if (!(readOnly && markers && markers.length > 0)) {
+        markerRef.current = L.marker([lat, lng], { icon: defaultIcon, draggable: !readOnly }).addTo(map);
+      }
+      if (!readOnly && markerRef.current) {
+        markerRef.current.on("dragend", (e) => {
+          const p = (e.target as L.Marker).getLatLng();
+          onChange?.(p.lat, p.lng);
+        });
+      }
     }
     if (!readOnly) {
       map.on("click", (e) => {
         const { lat: la, lng: ln } = e.latlng;
         if (!markerRef.current) {
-          markerRef.current = L.marker([la, ln], { icon, draggable: true }).addTo(map);
+          markerRef.current = L.marker([la, ln], { icon: defaultIcon, draggable: true }).addTo(map);
           markerRef.current.on("dragend", (ev) => {
             const p = (ev.target as L.Marker).getLatLng();
             onChange?.(p.lat, p.lng);
@@ -61,8 +110,13 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
   // Update marker AND recenter map when prop changes externally (e.g. GPS update)
   useEffect(() => {
     if (!mapRef.current || lat == null || lng == null) return;
+    if (readOnly && markers && markers.length > 0) {
+      const currentZoom = mapRef.current.getZoom();
+      mapRef.current.setView([lat, lng], Math.max(currentZoom, 16), { animate: true });
+      return;
+    }
     if (!markerRef.current) {
-      markerRef.current = L.marker([lat, lng], { icon, draggable: !readOnly }).addTo(mapRef.current);
+      markerRef.current = L.marker([lat, lng], { icon: defaultIcon, draggable: !readOnly }).addTo(mapRef.current);
       if (!readOnly) {
         markerRef.current.on("dragend", (e) => {
           const p = (e.target as L.Marker).getLatLng();
@@ -74,7 +128,7 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
     }
     const currentZoom = mapRef.current.getZoom();
     mapRef.current.setView([lat, lng], Math.max(currentZoom, 16), { animate: true });
-  }, [lat, lng, readOnly]);
+  }, [lat, lng, readOnly, markers]);
 
   // Extra markers
   useEffect(() => {
@@ -82,8 +136,15 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
     extraRef.current.forEach((m) => m.remove());
     extraRef.current = [];
     (markers ?? []).forEach((m) => {
-      const mk = L.marker([m.lat, m.lng], { icon, title: m.label }).addTo(mapRef.current!);
-      if (m.label) mk.bindTooltip(m.label);
+      const customIcon = getMarkerIcon(m.label, m.color);
+      const mk = L.marker([m.lat, m.lng], { icon: customIcon, title: m.label }).addTo(mapRef.current!);
+      if (m.label) {
+        mk.bindTooltip(m.label, {
+          permanent: true,
+          direction: "top",
+          className: "bg-popover text-popover-foreground border border-border shadow-md rounded px-2 py-0.5 text-xs font-semibold"
+        });
+      }
       extraRef.current.push(mk);
     });
     // Fit bounds if multiple points

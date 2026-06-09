@@ -1,6 +1,16 @@
 import jsPDF from "jspdf";
 import gasbeeMark from "@/assets/gasbee-mark.png";
 
+export interface ReceiptAddress {
+  recipient_name?: string | null;
+  recipient_phone?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  postcode?: string | null;
+  city?: string | null;
+  state?: string | null;
+}
+
 export interface ReceiptOrder {
   code: string;
   created_at?: string | null;
@@ -10,7 +20,7 @@ export interface ReceiptOrder {
   discount?: number | string | null;
   payment_method?: string | null;
   payment_status?: string | null;
-  address_snapshot?: any;
+  address_snapshot?: ReceiptAddress | null;
   merchants?: { name?: string | null; phone?: string | null } | null;
 }
 
@@ -21,7 +31,7 @@ export interface ReceiptItem {
   subtotal: number | string;
 }
 
-const money = (v: any) => `RM ${Number(v || 0).toFixed(2)}`;
+const money = (v: string | number | null | undefined) => `RM ${Number(v || 0).toFixed(2)}`;
 
 // Brand palette
 const BRAND = {
@@ -230,17 +240,85 @@ export async function generateReceiptPdf(
 }
 
 export async function downloadReceipt(orderId: string) {
-  const { supabase } = await import("@/integrations/supabase/client");
-  const { data: order, error } = await supabase
-    .from("orders")
-    .select("*, merchants(name, phone)")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (error || !order) throw new Error(error?.message || "Order not found");
-  const { data: items } = await supabase
-    .from("order_items")
-    .select("*")
-    .eq("order_id", orderId);
-  const doc = await generateReceiptPdf(order as any, (items ?? []) as any);
-  doc.save(`Receipt-${(order as any).code}.pdf`);
+  const { toast } = await import("sonner");
+  const { Capacitor } = await import("@capacitor/core");
+  const toastId = toast.loading("Memulakan muat turun resit...");
+  console.log(`downloadReceipt started for orderId: ${orderId}`);
+
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    console.log("Querying Supabase for order details...");
+    const { data: order, error } = await supabase
+      .from("orders")
+      .select("*, merchants(name, phone)")
+      .eq("id", orderId)
+      .maybeSingle();
+      
+    if (error || !order) {
+      console.error("Supabase order query failed:", error);
+      throw new Error(error?.message || "Order not found");
+    }
+    console.log("Order retrieved:", JSON.stringify(order));
+
+    console.log("Querying Supabase for order items...");
+    const { data: items, error: itemsError } = await supabase
+      .from("order_items")
+      .select("*")
+      .eq("order_id", orderId);
+      
+    if (itemsError) {
+      console.error("Supabase order items query failed:", itemsError);
+    }
+    console.log(`Retrieved ${items?.length || 0} order items.`);
+
+    console.log("Generating jsPDF document...");
+    const receiptOrder = order as unknown as ReceiptOrder;
+    const doc = await generateReceiptPdf(receiptOrder, (items ?? []) as unknown as ReceiptItem[]);
+    const filename = `Receipt-${receiptOrder.code}.pdf`;
+    console.log(`Receipt filename: ${filename}`);
+
+    if (Capacitor.isNativePlatform()) {
+      console.log("Platform is Native. Commencing native saving...");
+      
+      const { Filesystem, Directory } = await import("@capacitor/filesystem");
+      const { FileOpener } = await import("@capacitor-community/file-opener");
+
+      console.log("Converting PDF output to base64...");
+      const dataUri = doc.output("datauristring");
+      const base64Data = dataUri.includes(",") ? dataUri.split(",")[1] : dataUri;
+
+      console.log("Writing PDF file to Cache directory...");
+      const writeResult = await Filesystem.writeFile({
+        path: filename,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+      console.log("File write successful. Result URI:", writeResult.uri);
+
+      console.log("Getting native file URI...");
+      const uriResult = await Filesystem.getUri({
+        directory: Directory.Cache,
+        path: filename,
+      });
+      console.log("Native URI resolved:", uriResult.uri);
+
+      console.log("Opening native file viewer...");
+      await FileOpener.open({
+        filePath: uriResult.uri,
+        contentType: "application/pdf",
+        openWithDefault: true,
+      });
+      console.log("Native file opener triggered successfully.");
+      toast.success("Resit berjaya dimuat turun!", { id: toastId });
+    } else {
+      console.log("Platform is Web. Using browser save...");
+      doc.save(filename);
+      toast.success("Resit berjaya dimuat turun!", { id: toastId });
+    }
+  } catch (err) {
+    const error = err as Error;
+    console.error("Error downloading or opening receipt:", error);
+    toast.error(`Gagal memuat turun resit: ${error.message || String(error)}`, { id: toastId });
+    throw error;
+  }
 }

@@ -39,6 +39,12 @@ export default function UserOrderDetail() {
     load();
     const ch = supabase.channel(`order-${id}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${id}` }, load)
+      .on("broadcast", { event: "location" }, (p: { payload?: { lat?: number; lng?: number } }) => {
+        console.log("Rider location broadcast received:", p);
+        if (p.payload?.lat && p.payload?.lng) {
+          setRiderLoc({ lat: Number(p.payload.lat), lng: Number(p.payload.lng) });
+        }
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [id]);
