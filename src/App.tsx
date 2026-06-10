@@ -95,7 +95,8 @@ import { DeepLinkProvider } from "@/components/DeepLinkProvider";
 import PaymentBridge from "@/pages/PaymentBridge";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import PaymentFailed from "@/pages/PaymentFailed";
-import PrivacyPolicy from "@/pages/doc/PrivacyPolicy";
+import PrivacyPolicyUser from "@/pages/doc/PrivacyPolicyUser";
+import PrivacyPolicyRider from "@/pages/doc/PrivacyPolicyRider";
 import { APP_VARIANT } from "@/variant";
 
 const queryClient = new QueryClient();
@@ -242,7 +243,8 @@ const App = () => (
             <Route path="/payment-bridge" element={<PaymentBridge />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-failed" element={<PaymentFailed />} />
-            <Route path="/doc/privacy-policies" element={<PrivacyPolicy />} />
+            <Route path="/doc/privacy-policies/user" element={<PrivacyPolicyUser />} />
+            <Route path="/doc/privacy-policies/rider" element={<PrivacyPolicyRider />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </DeepLinkProvider>
