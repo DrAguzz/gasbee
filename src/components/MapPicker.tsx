@@ -77,8 +77,16 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
     const center: [number, number] = [lat ?? 3.139, lng ?? 101.6869]; // KL default
-    const map = L.map(ref.current).setView(center, lat && lng ? 16 : 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(map);
+    const map = L.map(ref.current, { zoomControl: false }).setView(center, lat && lng ? 16 : 12);
+    
+    // Add modern zoom controls to the bottom right
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Use Google Maps Standard Tiles instead of OpenStreetMap for a much better, familiar look
+    L.tileLayer("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", { 
+      maxZoom: 20,
+      attribution: "© Google Maps" 
+    }).addTo(map);
     mapRef.current = map;
 
     if (lat != null && lng != null) {
