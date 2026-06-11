@@ -42,8 +42,18 @@ const getMarkerIcon = (label?: string, color?: string) => {
     });
   }
 
-  // Default destination/home pin
-  return defaultIcon;
+  // Default destination/home pin - Beautiful teardrop design
+  return L.divIcon({
+    html: `
+      <div class="relative flex items-center justify-center w-10 h-10 bg-primary text-primary-foreground shadow-lg" 
+           style="border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+        <span style="transform: rotate(45deg);" class="text-lg">🏠</span>
+      </div>
+    `,
+    className: "custom-destination-icon bg-transparent border-0",
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+  });
 };
 
 interface Props {
