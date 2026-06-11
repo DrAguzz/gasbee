@@ -6,11 +6,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Phone, Navigation, MapPin, Package, Home, Check } from "lucide-react";
+import { Phone, Navigation, MapPin, Package, Home, Check, Loader2, MapPinOff, ShieldAlert } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { SwipeSlider } from "@/components/SwipeSlider";
-import { Capacitor } from "@capacitor/core";
-import { Geolocation } from "@capacitor/geolocation";
+import { ensureLocationPermission, startLocationWatch, type GpsStatus, type WatchHandle } from "@/lib/riderTracking";
 
 const FLOW: Record<string, string> = {
   assigned: "arrived_at_merchant",
@@ -29,9 +28,10 @@ export default function RiderActive() {
   const [orders, setOrders] = useState<any[]>([]);
   const [merchants, setMerchants] = useState<Record<string, any>>({});
   const [proofUrls, setProofUrls] = useState<Record<string, string | null>>({});
-  const watchRef = useRef<any>(null);
-  const webWatchRef = useRef<number | null>(null);
+  const watchRef = useRef<WatchHandle | null>(null);
   const orderChannelsRef = useRef<Record<string, RealtimeChannel>>({});
+  const [gpsStatus, setGpsStatus] = useState<GpsStatus>("idle");
+  const lastSentRef = useRef<number>(0);
 
   const load = async () => {
     if (!user) return;
@@ -113,22 +113,22 @@ export default function RiderActive() {
     };
   }, [orders]);
 
+  // Start native/web GPS tracking once rider has at least one active job
   useEffect(() => {
-    if (!rider || orders.length === 0) return;
-    
-    let active = true;
+    let cancelled = false;
+    const stop = async () => {
+      if (watchRef.current) { await watchRef.current.stop(); watchRef.current = null; }
+    };
+    if (!rider || orders.length === 0) { setGpsStatus("idle"); stop(); return; }
 
     const broadcastLocation = (lat: number, lng: number) => {
       Object.keys(orderChannelsRef.current).forEach((orderId) => {
         const ch = orderChannelsRef.current[orderId];
         if (ch) {
-          console.log(`Broadcasting location to order-${orderId}:`, lat, lng);
           ch.send({
             type: "broadcast",
             event: "location",
             payload: { lat, lng }
-          }).then((res) => {
-            console.log(`Broadcast send result to order-${orderId}:`, res);
           }).catch((err) => {
             console.error(`Broadcast error on order-${orderId}:`, err);
           });
@@ -136,85 +136,35 @@ export default function RiderActive() {
       });
     };
 
-    const startWatching = async () => {
-      if (Capacitor.isNativePlatform()) {
-        try {
-          console.log("RiderActive: Checking location permissions...");
-          let permStatus = await Geolocation.checkPermissions();
-          console.log("RiderActive: Geolocation permission check result:", JSON.stringify(permStatus));
-          if (permStatus.location !== "granted") {
-            console.log("RiderActive: Location permission not granted. Requesting...");
-            permStatus = await Geolocation.requestPermissions();
-            console.log("RiderActive: Geolocation permission request result:", JSON.stringify(permStatus));
-          }
-          if (permStatus.location !== "granted") {
-            console.warn("RiderActive: Location permission denied.");
-            toast.error("Kebenaran lokasi ditolak. Sila benarkan akses lokasi untuk mengemas kini kedudukan anda.");
-            return;
-          }
-
-          if (!active) return;
-          console.log("RiderActive: Starting location watch via Capacitor...");
-          const id = await Geolocation.watchPosition(
-            { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 },
-            async (position, err) => {
-              if (err) {
-                console.error("RiderActive watch error:", err);
-                return;
-              }
-              if (position && active) {
-                console.log("RiderActive location update:", position.coords.latitude, position.coords.longitude);
-                await supabase.from("riders").update({ 
-                  current_lat: position.coords.latitude, 
-                  current_lng: position.coords.longitude 
-                }).eq("id", rider.id);
-                broadcastLocation(position.coords.latitude, position.coords.longitude);
-              }
-            }
-          );
-          watchRef.current = id;
-        } catch (error) {
-          console.error("RiderActive Geolocation error:", error);
-        }
-      } else {
-        if (!navigator.geolocation) return;
-        console.log("RiderActive: Starting location watch via browser navigator...");
-        const id = navigator.geolocation.watchPosition(
-          async (pos) => {
-            if (active) {
-              console.log("RiderActive web location update:", pos.coords.latitude, pos.coords.longitude);
-              await supabase.from("riders").update({ 
-                current_lat: pos.coords.latitude, 
-                current_lng: pos.coords.longitude 
-              }).eq("id", rider.id);
-              broadcastLocation(pos.coords.latitude, pos.coords.longitude);
-            }
-          },
-          (err) => {
-            console.error("RiderActive web watch error:", err);
-          },
-          { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 }
-        );
-        webWatchRef.current = id;
+    (async () => {
+      setGpsStatus("searching");
+      const perm = await ensureLocationPermission();
+      if (cancelled) return;
+      if (!perm.granted) {
+        setGpsStatus(perm.status);
+        toast.error("Location permission is required to continue this delivery.");
+        return;
       }
-    };
+      const handle = await startLocationWatch(
+        async (pos) => {
+          broadcastLocation(pos.lat, pos.lng);
+          // Throttle DB updates to once every ~5s
+          const now = Date.now();
+          if (now - lastSentRef.current < 5000) return;
+          lastSentRef.current = now;
+          const { error } = await supabase
+            .from("riders")
+            .update({ current_lat: pos.lat, current_lng: pos.lng })
+            .eq("id", rider.id);
+          if (error) console.error("[riderTracking] failed to push location", error);
+        },
+        (s) => { if (!cancelled) setGpsStatus(s); }
+      );
+      if (cancelled) { await handle?.stop(); return; }
+      watchRef.current = handle;
+    })();
 
-    startWatching();
-
-    return () => {
-      active = false;
-      if (watchRef.current !== null) {
-        console.log("Clearing Capacitor location watch:", watchRef.current);
-        const idToClear = watchRef.current;
-        Geolocation.clearWatch({ id: idToClear }).catch(err => console.error("Error clearing watch:", err));
-        watchRef.current = null;
-      }
-      if (webWatchRef.current !== null && navigator.geolocation) {
-        console.log("Clearing web location watch:", webWatchRef.current);
-        navigator.geolocation.clearWatch(webWatchRef.current);
-        webWatchRef.current = null;
-      }
-    };
+    return () => { cancelled = true; stop(); };
   }, [rider?.id, orders.length]);
 
   const advance = async (o: any) => {
@@ -247,6 +197,31 @@ export default function RiderActive() {
         <h1 className="text-xl font-bold">Active deliveries</h1>
         <Button asChild variant="outline" size="sm"><Link to="/merchant/rider/refund-pickups">Refund pickups</Link></Button>
       </div>
+      {orders.length > 0 && (() => {
+        const map: Record<GpsStatus, { cls: string; icon: any; text: string }> = {
+          idle: { cls: "bg-muted text-muted-foreground", icon: MapPinOff, text: "GPS idle" },
+          searching: { cls: "bg-amber-500/10 text-amber-700", icon: Loader2, text: "Searching for GPS signal…" },
+          active: { cls: "bg-emerald-500/10 text-emerald-700", icon: MapPin, text: "GPS active — sharing live location" },
+          permission_required: { cls: "bg-amber-500/10 text-amber-700", icon: ShieldAlert, text: "Location permission required" },
+          permission_denied: { cls: "bg-destructive/10 text-destructive", icon: ShieldAlert, text: "Location permission denied — enable in settings" },
+          service_disabled: { cls: "bg-destructive/10 text-destructive", icon: MapPinOff, text: "Please turn on your phone location/GPS to continue delivery." },
+          error: { cls: "bg-destructive/10 text-destructive", icon: MapPinOff, text: "GPS error — please check device location" },
+        };
+        const s = map[gpsStatus];
+        const Icon = s.icon;
+        return (
+          <div className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium ${s.cls}`}>
+            <Icon className={`h-4 w-4 ${gpsStatus === "searching" ? "animate-spin" : ""}`} />
+            <span>{s.text}</span>
+            {(gpsStatus === "permission_denied" || gpsStatus === "service_disabled") && (
+              <Button size="sm" variant="outline" className="ml-auto h-7" onClick={async () => {
+                const p = await ensureLocationPermission();
+                setGpsStatus(p.status);
+              }}>Retry</Button>
+            )}
+          </div>
+        );
+      })()}
       {orders.length === 0 && <p className="text-sm text-muted-foreground">No active delivery.</p>}
       {orders.map((o) => {
         const a = o.address_snapshot ?? {};

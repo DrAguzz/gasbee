@@ -72,7 +72,11 @@ export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLi
       return;
     }
     toast.success("Welcome back");
-    nav(homeForRoles(roles), { replace: true });
+    const target = homeForRoles(roles);
+    if (target === "/user/home") {
+      try { sessionStorage.setItem("gasbee-bee-intro", "1"); } catch {}
+    }
+    nav(target, { replace: true });
   };
 
 

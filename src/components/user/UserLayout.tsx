@@ -1,9 +1,11 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { Logo } from "@/components/Logo";
 import UserTabBar from "@/components/user/UserTabBar";
+import { BeeIntro } from "@/components/user/BeeIntro";
 
 const TOP_LEVEL = ["/user/home", "/user/orders", "/user/notifications", "/user/profile"];
 
@@ -12,6 +14,17 @@ export default function UserLayout() {
   const { pathname } = useLocation();
   const { count } = useCart();
   const isTopLevel = TOP_LEVEL.some((p) => pathname === p);
+  const [showBee, setShowBee] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("gasbee-bee-intro") === "1") {
+        sessionStorage.removeItem("gasbee-bee-intro");
+        setShowBee(true);
+      }
+    } catch {}
+  }, []);
+
 
   const handleBack = () => {
     if (window.history.length > 1) nav(-1);
@@ -40,6 +53,7 @@ export default function UserLayout() {
       <main className="flex-1 p-4"><Outlet /></main>
       <div className="pb-24 text-center text-[10px] text-muted-foreground py-1">Version 2.0.0</div>
       <UserTabBar />
+      {showBee && <BeeIntro onDone={() => setShowBee(false)} />}
     </div>
   );
 }

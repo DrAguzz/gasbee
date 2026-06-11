@@ -160,9 +160,9 @@ export default function UserOrderDetail() {
           ? (o.merchants?.latitude ? { lat: Number(o.merchants.latitude), lng: Number(o.merchants.longitude), label: o.merchants.name } : null)
           : (a.latitude ? { lat: Number(a.latitude), lng: Number(a.longitude), label: "Delivery address" } : null);
 
-        const phaseMarkers: any[] = [];
-        if (target) phaseMarkers.push(target);
-        if (riderLoc) phaseMarkers.push({ lat: riderLoc.lat, lng: riderLoc.lng, label: "Rider 🛵" });
+        // Primary point = rider live location. Target (merchant / customer) shown as secondary marker.
+        const extraMarkers: any[] = [];
+        if (target) extraMarkers.push({ ...target, label: isPickup ? `📍 ${target.label ?? "Merchant"}` : `🏠 ${target.label ?? "Delivery address"}` });
 
         // ETA: haversine distance assuming 30 km/h
         let etaMin: number | null = null;
@@ -196,17 +196,16 @@ export default function UserOrderDetail() {
                 {etaMin != null && <span> · ETA ~{etaMin} min</span>}
               </div>
             </div>
-            {phaseMarkers.length > 0 && (
+            {riderLoc ? (
               <MapPicker
-                lat={riderLoc?.lat ?? target?.lat ?? null}
-                lng={riderLoc?.lng ?? target?.lng ?? null}
+                lat={riderLoc.lat}
+                lng={riderLoc.lng}
                 readOnly
-                markers={phaseMarkers}
-                height={260}
+                markers={extraMarkers}
+                height={280}
               />
-            )}
-            {!riderLoc && (
-              <p className="px-3 py-2 text-[11px] text-muted-foreground">Waiting for rider GPS signal…</p>
+            ) : (
+              <p className="px-3 py-3 text-xs text-muted-foreground">Waiting for rider GPS signal…</p>
             )}
           </Card>
         );

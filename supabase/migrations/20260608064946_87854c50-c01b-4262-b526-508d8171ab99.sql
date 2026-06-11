@@ -1,0 +1,1 @@
+ALTER TABLE public.riders REPLICA IDENTITY FULL;
