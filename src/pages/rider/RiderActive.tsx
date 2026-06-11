@@ -6,8 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Phone, Navigation, MapPin, Package, Home } from "lucide-react";
+import { Phone, Navigation, MapPin, Package, Home, Check } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
+import { SwipeSlider } from "@/components/SwipeSlider";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 
@@ -224,6 +225,10 @@ export default function RiderActive() {
     if (next === "delivered") {
       const proof = proofUrls[o.id];
       if (!proof) { toast.error("Upload proof of delivery photo first."); return; }
+      if (o.payment_method === "cod" && o.payment_status !== "paid") {
+        toast.error("Sila sahkan kutipan tunai terlebih dahulu menggunakan slider.");
+        return;
+      }
       stamp.delivered_at = new Date().toISOString();
       stamp.proof_of_delivery_url = proof;
     }
@@ -283,6 +288,34 @@ export default function RiderActive() {
                   onChange={(url) => setProofUrls((p) => ({ ...p, [o.id]: url }))}
                   label="Upload photo"
                 />
+              </div>
+            )}
+
+            {o.status === "arrived_at_customer" && o.payment_method === "cod" && (
+              <div className="rounded border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Peringatan Kutipan Tunai (COD)</p>
+                {o.payment_status === "paid" ? (
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-2 rounded-lg">
+                    <Check className="h-4 w-4" /> Wang tunai RM{Number(o.total_amount).toFixed(2)} telah dikutip.
+                  </div>
+                ) : (
+                  <SwipeSlider
+                    amount={Number(o.total_amount)}
+                    label="Geser jika sudah terima tunai"
+                    onConfirm={async () => {
+                      const { error } = await supabase
+                        .from("orders")
+                        .update({ payment_status: "paid" })
+                        .eq("id", o.id);
+                      if (error) {
+                        toast.error(error.message);
+                      } else {
+                        toast.success("Tunai disahkan telah diterima!");
+                        load();
+                      }
+                    }}
+                  />
+                )}
               </div>
             )}
 

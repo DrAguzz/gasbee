@@ -3,7 +3,7 @@ const path = require('path');
 
 const variant = process.argv[2];
 const isUser = variant === 'user';
-const appId = isUser ? 'com.gasbee.user' : 'com.gasbee.rider';
+const appId = isUser ? 'com.gasbee.app' : 'com.gasbee.rider';
 const appName = isUser ? 'Gasbee' : 'Gasbee Rider';
 const targetAndroidDir = isUser ? 'android-user' : 'android-rider';
 

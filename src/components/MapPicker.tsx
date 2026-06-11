@@ -71,6 +71,7 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
   const markerRef = useRef<L.Marker | null>(null);
   const extraRef = useRef<L.Marker[]>([]);
   const circleRef = useRef<L.Circle | null>(null);
+  const routeLinesRef = useRef<L.Polyline[]>([]);
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -153,6 +154,106 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
     (markers ?? []).forEach((m) => all.push([m.lat, m.lng]));
     if (all.length > 1) mapRef.current.fitBounds(L.latLngBounds(all as any), { padding: [40, 40] });
   }, [markers, lat, lng]);
+
+  // Fetch and draw route between markers
+  useEffect(() => {
+    if (!mapRef.current || !readOnly || !markers || markers.length < 2) {
+      routeLinesRef.current.forEach((line) => {
+        try { line.remove(); } catch (e) {}
+      });
+      routeLinesRef.current = [];
+      return;
+    }
+
+    let active = true;
+
+    const fetchAndDrawRoute = async () => {
+      routeLinesRef.current.forEach((line) => {
+        try { line.remove(); } catch (e) {}
+      });
+      routeLinesRef.current = [];
+
+      // Sort or organize coords so Rider is first if present
+      let sortedMarkers = [...markers];
+      const riderIdx = sortedMarkers.findIndex(m => 
+        (m.label ?? "").toLowerCase().includes("rider") || 
+        (m.label ?? "").includes("🛵")
+      );
+      if (riderIdx > 0) {
+        const [riderMarker] = sortedMarkers.splice(riderIdx, 1);
+        sortedMarkers.unshift(riderMarker);
+      }
+
+      const coordsString = sortedMarkers
+        .map((m) => `${m.lng},${m.lat}`)
+        .join(";");
+
+      try {
+        const response = await fetch(
+          `https://router.projectosrm.org/route/v1/driving/${coordsString}?geometries=geojson&overview=full`
+        );
+        if (!response.ok) throw new Error("OSRM API error");
+
+        const data = await response.json();
+        if (!active || !mapRef.current) return;
+
+        if (data.code === "Ok" && data.routes && data.routes.length > 0) {
+          const routeCoords = data.routes[0].geometry.coordinates.map(
+            (coord: [number, number]) => [coord[1], coord[0]] as [number, number]
+          );
+
+          const hasRider = markers.some((m) =>
+            (m.label ?? "").toLowerCase().includes("rider") ||
+            (m.label ?? "").includes("🛵")
+          );
+
+          const colorGlow = hasRider ? "#fbbf24" : "#60a5fa"; // amber vs blue
+          const colorMain = hasRider ? "#d97706" : "#2563eb"; // dark amber vs dark blue
+
+          const glowLine = L.polyline(routeCoords, {
+            color: colorGlow,
+            weight: 8,
+            opacity: 0.3,
+            lineCap: "round",
+            lineJoin: "round",
+          }).addTo(mapRef.current);
+
+          const mainLine = L.polyline(routeCoords, {
+            color: colorMain,
+            weight: 4,
+            opacity: 0.9,
+            lineCap: "round",
+            lineJoin: "round",
+          }).addTo(mapRef.current);
+
+          routeLinesRef.current = [glowLine, mainLine];
+        } else {
+          throw new Error("Invalid route");
+        }
+      } catch (err) {
+        console.warn("OSRM route fetch failed, using straight fallback:", err);
+        if (!active || !mapRef.current) return;
+
+        const straightCoords = sortedMarkers.map((m) => [m.lat, m.lng] as [number, number]);
+        const fallbackLine = L.polyline(straightCoords, {
+          color: "#94a3b8",
+          weight: 3,
+          dashArray: "5, 10",
+          opacity: 0.8,
+          lineCap: "round",
+          lineJoin: "round",
+        }).addTo(mapRef.current);
+
+        routeLinesRef.current = [fallbackLine];
+      }
+    };
+
+    fetchAndDrawRoute();
+
+    return () => {
+      active = false;
+    };
+  }, [markers, readOnly]);
 
   // Coverage radius circle
   useEffect(() => {
