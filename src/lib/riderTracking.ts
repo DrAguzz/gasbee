@@ -61,6 +61,23 @@ export async function startLocationWatch(
 ): Promise<WatchHandle | null> {
   try {
     if (isNative()) {
+      try {
+        const initial = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 10000 });
+        if (initial) {
+          onStatus?.("active");
+          onPosition({
+            lat: initial.coords.latitude,
+            lng: initial.coords.longitude,
+            accuracy: initial.coords.accuracy ?? null,
+            heading: initial.coords.heading ?? null,
+            speed: initial.coords.speed ?? null,
+            timestamp: initial.timestamp ?? Date.now(),
+          });
+        }
+      } catch (e) {
+        console.warn("[riderTracking] initial position fetch failed, waiting for watchPosition", e);
+      }
+
       const id = await Geolocation.watchPosition(
         { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 },
         (position, err) => {
