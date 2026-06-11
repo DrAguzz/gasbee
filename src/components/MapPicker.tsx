@@ -43,16 +43,7 @@ const getMarkerIcon = (label?: string, color?: string) => {
   }
 
   // Default destination/home pin
-  return L.divIcon({
-    html: `
-      <div class="relative flex items-center justify-center w-9 h-9 rounded-full bg-red-500 text-white shadow-lg border-2 border-white">
-        <span class="text-base">📍</span>
-      </div>
-    `,
-    className: "custom-destination-icon",
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-  });
+  return defaultIcon;
 };
 
 interface Props {
@@ -81,10 +72,8 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
     mapRef.current = map;
 
     if (lat != null && lng != null) {
-      if (!(readOnly && markers && markers.length > 0)) {
-        markerRef.current = L.marker([lat, lng], { icon: defaultIcon, draggable: !readOnly }).addTo(map);
-      }
-      if (!readOnly && markerRef.current) {
+      if (!readOnly) {
+        markerRef.current = L.marker([lat, lng], { icon: defaultIcon, draggable: true }).addTo(map);
         markerRef.current.on("dragend", (e) => {
           const p = (e.target as L.Marker).getLatLng();
           onChange?.(p.lat, p.lng);
@@ -111,25 +100,22 @@ export function MapPicker({ lat, lng, onChange, height = 260, readOnly, markers,
   // Update marker AND recenter map when prop changes externally (e.g. GPS update)
   useEffect(() => {
     if (!mapRef.current || lat == null || lng == null) return;
-    if (readOnly && markers && markers.length > 0) {
-      const currentZoom = mapRef.current.getZoom();
-      mapRef.current.setView([lat, lng], Math.max(currentZoom, 16), { animate: true });
-      return;
-    }
-    if (!markerRef.current) {
-      markerRef.current = L.marker([lat, lng], { icon: defaultIcon, draggable: !readOnly }).addTo(mapRef.current);
-      if (!readOnly) {
+    if (!readOnly) {
+      if (!markerRef.current) {
+        markerRef.current = L.marker([lat, lng], { icon: defaultIcon, draggable: true }).addTo(mapRef.current);
         markerRef.current.on("dragend", (e) => {
           const p = (e.target as L.Marker).getLatLng();
           onChange?.(p.lat, p.lng);
         });
+      } else {
+        markerRef.current.setLatLng([lat, lng]);
       }
-    } else {
-      markerRef.current.setLatLng([lat, lng]);
     }
+    
+    // Always recenter on lat/lng updates
     const currentZoom = mapRef.current.getZoom();
     mapRef.current.setView([lat, lng], Math.max(currentZoom, 16), { animate: true });
-  }, [lat, lng, readOnly, markers]);
+  }, [lat, lng, readOnly]);
 
   // Extra markers
   useEffect(() => {

@@ -160,9 +160,9 @@ export default function UserOrderDetail() {
           ? (o.merchants?.latitude ? { lat: Number(o.merchants.latitude), lng: Number(o.merchants.longitude), label: o.merchants.name } : null)
           : (a.latitude ? { lat: Number(a.latitude), lng: Number(a.longitude), label: "Delivery address" } : null);
 
-        // Primary point = rider live location. Target (merchant / customer) shown as secondary marker.
         const extraMarkers: any[] = [];
-        if (target) extraMarkers.push({ ...target, label: isPickup ? `📍 ${target.label ?? "Merchant"}` : `🏠 ${target.label ?? "Delivery address"}` });
+        if (target) extraMarkers.push({ ...target, label: isPickup ? `Merchant` : `Delivery address` });
+        if (riderLoc) extraMarkers.push({ lat: riderLoc.lat, lng: riderLoc.lng, label: "🛵 Rider" });
 
         // ETA: haversine distance assuming 30 km/h
         let etaMin: number | null = null;

@@ -10,11 +10,6 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: "https",
   },
-  plugins: {
-    Geolocation: {
-      permissions: ['location'],
-    },
-  },
 };
 
 export default config;
