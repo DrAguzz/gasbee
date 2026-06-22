@@ -6,15 +6,21 @@
 set -e
 
 TARGET="${1:-user}"
+MODE="${2:-debug}"
 
 if [[ "$TARGET" != "user" && "$TARGET" != "rider" ]]; then
-  echo "❌ Usage: ./build-apk.sh [user|rider]"
+  echo "❌ Usage: ./build-apk.sh [user|rider] [debug|release]"
+  exit 1
+fi
+
+if [[ "$MODE" != "debug" && "$MODE" != "release" ]]; then
+  echo "❌ Mode must be 'debug' or 'release'"
   exit 1
 fi
 
 echo ""
 echo "🐝 ═══════════════════════════════════════════"
-echo "   Building Gasbee APK: $TARGET"
+echo "   Building Gasbee $MODE: $TARGET"
 echo "═══════════════════════════════════════════════"
 echo ""
 
@@ -35,15 +41,28 @@ echo "🔧 Step 4: Running update-config.cjs for $TARGET..."
 node update-config.cjs "$TARGET"
 
 # 5. Compile the Android app using gradle
-echo "🏗️  Step 5: Compiling APK via Gradle..."
 cd "android-$TARGET"
-./gradlew assembleDebug
+if [[ "$MODE" == "release" ]]; then
+  echo "🏗️  Step 5: Compiling Release APK and AAB via Gradle..."
+  ./gradlew assembleRelease bundleRelease
+else
+  echo "🏗️  Step 6: Compiling Debug APK via Gradle..."
+  ./gradlew assembleDebug
+fi
 cd ..
 
-# 6. Copy the compiled APK to the root workspace
-echo "💾 Step 6: Copying APK to workspace root..."
-cp "android-$TARGET/app/build/outputs/apk/debug/app-debug.apk" "gasbee-$TARGET-debug.apk"
-
-echo ""
-echo "🎉 Done! Latest APK is ready at: gasbee-$TARGET-debug.apk"
+# 6. Copy the compiled outputs to the root workspace
+echo "💾 Step 6: Copying built files to workspace root..."
+if [[ "$MODE" == "release" ]]; then
+  cp "android-$TARGET/app/build/outputs/apk/release/app-release.apk" "gasbee-$TARGET-release.apk"
+  cp "android-$TARGET/app/build/outputs/bundle/release/app-release.aab" "gasbee-$TARGET-release.aab"
+  echo ""
+  echo "🎉 Done! Release files are ready at:"
+  echo "   - APK: gasbee-$TARGET-release.apk"
+  echo "   - AAB: gasbee-$TARGET-release.aab"
+else
+  cp "android-$TARGET/app/build/outputs/apk/debug/app-debug.apk" "gasbee-$TARGET-debug.apk"
+  echo ""
+  echo "🎉 Done! Debug APK is ready at: gasbee-$TARGET-debug.apk"
+fi
 echo ""
