@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_requests: {
+        Row: {
+          account_email: string | null
+          admin_notes: string | null
+          completed_at: string | null
+          contact: string
+          created_at: string
+          id: string
+          name: string
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["account_deletion_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_email?: string | null
+          admin_notes?: string | null
+          completed_at?: string | null
+          contact: string
+          created_at?: string
+          id?: string
+          name: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["account_deletion_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_email?: string | null
+          admin_notes?: string | null
+          completed_at?: string | null
+          contact?: string
+          created_at?: string
+          id?: string
+          name?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["account_deletion_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       addresses: {
         Row: {
           address_line1: string
@@ -1683,6 +1731,12 @@ export type Database = {
       }
     }
     Enums: {
+      account_deletion_status:
+        | "pending"
+        | "in_review"
+        | "approved"
+        | "completed"
+        | "rejected"
       app_role:
         | "super_admin"
         | "admin"
@@ -1882,6 +1936,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_deletion_status: [
+        "pending",
+        "in_review",
+        "approved",
+        "completed",
+        "rejected",
+      ],
       app_role: [
         "super_admin",
         "admin",

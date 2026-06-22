@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingBag, Users, Store, FileCheck2, Bike,
   Package, Tags, Boxes, CreditCard, Undo2, Wallet, Percent,
-  Image as ImageIcon, Megaphone, BarChart3, Bell, LifeBuoy, Settings, ScrollText, LogOut, ShieldCheck, Menu, MonitorPlay,
+  Image as ImageIcon, Megaphone, BarChart3, Bell, LifeBuoy, Settings, ScrollText, LogOut, ShieldCheck, Menu, MonitorPlay, Trash2,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +25,7 @@ const groups: { label: string; items: { to: string; label: string; icon: any }[]
       { to: "/orders", label: "Orders", icon: ShoppingBag },
       { to: "/refunds", label: "Refunds", icon: Undo2 },
       { to: "/support-tickets", label: "Support", icon: LifeBuoy },
+      { to: "/account-deletion-requests", label: "Deletion Requests", icon: Trash2 },
     ],
   },
   {

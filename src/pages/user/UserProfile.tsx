@@ -2,12 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { LogOut, MapPin, ShoppingBag, LifeBuoy, Bell, Store, Building2, ChevronRight, User as UserIcon, Mail, Phone, Camera, Loader2 } from "lucide-react";
+import { LogOut, MapPin, ShoppingBag, LifeBuoy, Bell, Store, Building2, ChevronRight, Mail, Camera, Loader2, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function UserProfile() {
@@ -21,10 +18,6 @@ export default function UserProfile() {
     supabase.from("profiles").select("*").eq("id", user.id).maybeSingle().then(({ data }) => setProfile(data ?? { full_name: "", phone: "", avatar_url: "" }));
   }, [user]);
 
-  const save = async () => {
-    const { error } = await supabase.from("profiles").update({ full_name: profile.full_name, phone: profile.phone }).eq("id", user!.id);
-    if (error) toast.error(error.message); else toast.success("Saved");
-  };
 
   const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,46 +83,12 @@ export default function UserProfile() {
         </div>
       </div>
 
-      {/* Personal info */}
-      <div className="glass-category-card space-y-4 rounded-2xl p-4">
-        <div className="flex items-center gap-2">
-          <UserIcon className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold">Personal Info</h2>
-        </div>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Email</Label>
-            <Input value={user?.email ?? ""} disabled className="rounded-xl" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Full name</Label>
-            <Input
-              value={profile.full_name ?? ""}
-              onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-              className="rounded-xl"
-              placeholder="Your name"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Phone</Label>
-            <Input
-              value={profile.phone ?? ""}
-              onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-              className="rounded-xl"
-              placeholder="+60..."
-            />
-          </div>
-          <Button onClick={save} className="w-full rounded-xl shadow-md shadow-primary/20">
-            Save changes
-          </Button>
-        </div>
-      </div>
-
       {/* Menu */}
       <div className="space-y-2">
         <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account</h2>
         <div className="space-y-2">
           {[
+            { to: "/user/account-settings", icon: Settings, label: "Account Settings", desc: "Personal info & account actions" },
             { to: "/user/orders", icon: ShoppingBag, label: "My Orders", desc: "Track your gas deliveries" },
             { to: "/user/addresses", icon: MapPin, label: "Addresses", desc: "Manage delivery locations" },
             { to: "/user/notifications", icon: Bell, label: "Notifications", desc: "Updates and alerts" },

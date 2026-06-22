@@ -42,9 +42,9 @@ export const LoginCard = ({ title, subtitle, expectedRoles, showSignup, signupLi
     const isNative = Capacitor.isNativePlatform();
     const origin = window.location.origin;
     
-    // Gunakan domain gasbee.vercel.app untuk mobile native atau jika bukan localhost
+    // Gunakan domain app.gasbee.com.my untuk mobile native atau jika bukan localhost
     const redirectUrl = isNative || !origin.includes("localhost")
-      ? `https://gasbee.vercel.app${resetRedirectPath}`
+      ? `https://app.gasbee.com.my${resetRedirectPath}`
       : `${origin}${resetRedirectPath}`;
 
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
