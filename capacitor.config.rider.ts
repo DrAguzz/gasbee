@@ -7,6 +7,9 @@ const config: CapacitorConfig = {
   android: {
     path: "android-rider",
   },
+  ios: {
+    path: "ios-rider",
+  },
   server: {
     androidScheme: "https",
   },

@@ -7,7 +7,7 @@ const PrivacyPolicyRider = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b sticky top-0 z-10">
+      <header className="bg-white border-b sticky top-0 z-10 pt-[env(safe-area-inset-top,0px)]">
         <div className="container mx-auto px-4 h-16 flex items-center">
           <button 
             onClick={() => navigate(-1)}

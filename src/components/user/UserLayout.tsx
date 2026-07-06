@@ -33,7 +33,7 @@ export default function UserLayout() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background pb-28">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/80 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] backdrop-blur">
         <div className="flex items-center gap-1">
           {!isTopLevel && (
             <Button variant="ghost" size="icon" onClick={handleBack} aria-label="Back">

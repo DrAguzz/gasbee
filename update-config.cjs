@@ -6,6 +6,7 @@ const isUser = variant === 'user';
 const appId = isUser ? 'com.gasbee.app' : 'com.gasbee.rider';
 const appName = isUser ? 'Gasbee' : 'Gasbee Rider';
 const targetAndroidDir = isUser ? 'android-user' : 'android-rider';
+const targetIosDir = isUser ? 'ios-user' : 'ios-rider';
 
 // 1. Update capacitor.config.ts
 const capConfigPath = path.join(__dirname, 'capacitor.config.ts');
@@ -68,3 +69,48 @@ if (fs.existsSync(manifestPath)) {
 const variantTsPath = path.join(__dirname, 'src', 'variant.ts');
 fs.writeFileSync(variantTsPath, `export const APP_VARIANT = (import.meta.env.VITE_APP_MODE || 'web') as 'user' | 'rider' | 'web';\n`, 'utf8');
 console.log(`Updated src/variant.ts -> APP_VARIANT set to dynamic with 'web' fallback`);
+
+// 6. Update iOS Info.plist if directory exists
+const plistPath = path.join(__dirname, targetIosDir, 'App', 'App', 'Info.plist');
+if (fs.existsSync(plistPath)) {
+  let content = fs.readFileSync(plistPath, 'utf8');
+  
+  // 6a. Update Display Name (CFBundleDisplayName)
+  const displayNameRegex = /<key>CFBundleDisplayName<\/key>\s*<string>[^<]+<\/string>/;
+  if (displayNameRegex.test(content)) {
+    content = content.replace(displayNameRegex, `<key>CFBundleDisplayName</key>\n\t<string>${appName}</string>`);
+  } else {
+    // If not found, insert after the first <dict>
+    content = content.replace(/<dict>/, `<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>${appName}</string>`);
+  }
+  
+  // 6b. Add/Update Geolocation permissions if not present
+  if (!content.includes('NSLocationWhenInUseUsageDescription')) {
+    const locationDescriptions = `
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Kami memerlukan akses lokasi anda untuk menjejaki pesanan dan mencari pemandu berhampiran.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Kami memerlukan akses lokasi anda untuk menjejaki pesanan dan mengemas kini status penghantaran dalam latar belakang.</string>`;
+    content = content.replace(/<\/dict>\s*<\/plist>/, `${locationDescriptions}\n</dict>\n</plist>`);
+  }
+  
+  // 6c. Add/Update Deep Link schemes if CFBundleURLTypes is not present
+  if (!content.includes('CFBundleURLTypes')) {
+    const urlTypes = `
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>${appId}</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>gasbee</string>
+			</array>
+		</dict>
+	</array>`;
+    content = content.replace(/<\/dict>\s*<\/plist>/, `${urlTypes}\n</dict>\n</plist>`);
+  }
+
+  fs.writeFileSync(plistPath, content, 'utf8');
+  console.log(`Updated ${targetIosDir} Info.plist -> CFBundleDisplayName: ${appName}, Location permissions & Deep Link Scheme: gasbee`);
+}

@@ -1,11 +1,14 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: 'com.gasbee.app',
-  appName: 'Gasbee',
+  appId: 'com.gasbee.rider',
+  appName: 'Gasbee Rider',
   webDir: "dist",
   android: {
-    path: "android-user",
+    path: "android-rider",
+  },
+  ios: {
+    path: "ios-rider",
   },
   server: {
     androidScheme: "https",
