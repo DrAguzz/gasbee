@@ -1,0 +1,1 @@
+CREATE POLICY "public read active merchants" ON public.merchants FOR SELECT TO anon, authenticated USING (status = 'active' OR owner_id = auth.uid() OR is_admin(auth.uid()) OR id = user_merchant_id(auth.uid()));

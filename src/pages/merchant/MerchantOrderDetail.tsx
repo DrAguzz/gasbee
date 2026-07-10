@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatOrderItemName } from "@/lib/receipt";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useMerchantContext } from "@/hooks/useMerchantContext";
@@ -157,7 +158,7 @@ export default function MerchantOrderDetail() {
           <thead className="border-b bg-muted/40"><tr className="text-left"><th className="p-3">Item</th><th className="p-3">Qty</th><th className="p-3">Price</th><th className="p-3">Subtotal</th></tr></thead>
           <tbody>
             {items.map((it) => (
-              <tr key={it.id} className="border-b"><td className="p-3">{it.product_name} <span className="text-xs text-muted-foreground capitalize">({it.type})</span></td><td className="p-3">{it.quantity}</td><td className="p-3">{fmt(it.unit_price)}</td><td className="p-3 font-semibold">{fmt(it.subtotal)}</td></tr>
+              <tr key={it.id} className="border-b"><td className="p-3">{formatOrderItemName(it)}</td><td className="p-3">{it.quantity}</td><td className="p-3">{fmt(it.unit_price)}</td><td className="p-3 font-semibold">{fmt(it.subtotal)}</td></tr>
             ))}
           </tbody>
         </table>

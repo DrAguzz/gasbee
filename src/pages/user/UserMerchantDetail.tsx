@@ -14,7 +14,7 @@ export default function UserMerchantDetail() {
   const [products, setProducts] = useState<any[]>([]);
   const [addr, setAddr] = useState<any>(null);
   const [category, setCategory] = useState<any>(null);
-  const [categoriesMap, setCategoriesMap] = useState<Record<string, string>>({});
+  const [categoriesMap, setCategoriesMap] = useState<Record<string, { name: string; slug: string }>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -23,9 +23,9 @@ export default function UserMerchantDetail() {
     if (categoryId) qb = qb.eq("category_id", categoryId);
     qb.then(({ data }) => setProducts(data ?? []));
     supabase.from("addresses").select("*").eq("is_default", true).maybeSingle().then(({ data }) => setAddr(data));
-    supabase.from("categories").select("id,name").then(({ data }) => {
-      const map: Record<string, string> = {};
-      (data ?? []).forEach((c: any) => { map[c.id] = c.name; });
+    supabase.from("categories").select("id,name,slug").then(({ data }) => {
+      const map: Record<string, { name: string; slug: string }> = {};
+      (data ?? []).forEach((c: any) => { map[c.id] = { name: c.name, slug: c.slug }; });
       setCategoriesMap(map);
     });
     if (categoryId) {
@@ -34,6 +34,7 @@ export default function UserMerchantDetail() {
       setCategory(null);
     }
   }, [id, categoryId]);
+
 
 
   if (!m) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -81,8 +82,15 @@ export default function UserMerchantDetail() {
           </Badge>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {products.map((p) => {
+      {(() => {
+        const SECTIONS: { slug: string; label: string; withSizes: boolean }[] = [
+          { slug: "lpg-refill", label: "LPG Refill (Gas Refill + Exchange Empty Cylinder)", withSizes: true },
+          { slug: "cylinder", label: "New Cylinder Gas (Gas Refill + New Cylinder Deposit Fee)", withSizes: true },
+          { slug: "industrial-gas", label: "Industrial Gas", withSizes: true },
+          { slug: "accessories", label: "Accessories / Inspection", withSizes: false },
+        ];
+
+        const renderCard = (p: any) => {
           const cs = p.is_coming_soon;
           const disabled = outOfRange || cs;
           const inner = (
@@ -93,10 +101,26 @@ export default function UserMerchantDetail() {
               {cs && <span className="absolute right-1 top-1 rounded bg-muted-foreground/80 px-1.5 py-0.5 text-[10px] font-medium text-background">Coming Soon</span>}
               <div className="p-2">
                 <div className="line-clamp-1 text-sm font-medium">{p.name}</div>
-                {categoriesMap[p.category_id] && (
-                  <Badge variant="outline" className="mt-1 text-[10px]">{categoriesMap[p.category_id]}</Badge>
-                )}
-                <div className="mt-1 text-sm font-bold text-primary">RM {Number(p.refill_price || p.selling_price).toFixed(2)}</div>
+                {(() => {
+                  const slug = categoriesMap[p.category_id]?.slug;
+                  const refill = Number(p.refill_price || 0);
+                  const newCyl = Number(p.new_cylinder_price || 0);
+                  const sell = Number(p.selling_price || 0);
+                  const price = slug === "cylinder"
+                    ? (newCyl + refill) || sell
+                    : slug === "accessories"
+                      ? sell
+                      : refill || sell;
+                  return (
+                    <>
+                      <div className="mt-1 text-sm font-bold text-primary">RM {price.toFixed(2)}</div>
+                      {slug === "cylinder" && newCyl > 0 && (
+                        <div className="text-[10px] text-muted-foreground">Tong RM {newCyl.toFixed(2)} + Gas RM {refill.toFixed(2)}</div>
+                      )}
+                    </>
+                  );
+                })()}
+
               </div>
             </Card>
           );
@@ -105,9 +129,53 @@ export default function UserMerchantDetail() {
           ) : (
             <Link key={p.id} to={`/user/product/${p.id}`}>{inner}</Link>
           );
-        })}
-        {products.length === 0 && <p className="col-span-2 text-sm text-muted-foreground">No products available.</p>}
-      </div>
+        };
+
+        const bySlug: Record<string, any[]> = {};
+        const others: any[] = [];
+        products.forEach((p) => {
+          const slug = categoriesMap[p.category_id]?.slug;
+          if (slug && SECTIONS.some((s) => s.slug === slug)) {
+            (bySlug[slug] ||= []).push(p);
+          } else {
+            others.push(p);
+          }
+        });
+
+        const sections = SECTIONS.filter((s) => (bySlug[s.slug]?.length ?? 0) > 0);
+
+        if (sections.length === 0 && others.length === 0) {
+          return <p className="text-sm text-muted-foreground">No products available.</p>;
+        }
+
+        return (
+          <div className="space-y-6">
+            {sections.map((s) => {
+              const list = (bySlug[s.slug] ?? []).slice().sort((a, b) => {
+                const sa = Number(a.cylinder_size_kg) || 0;
+                const sb = Number(b.cylinder_size_kg) || 0;
+                if (sa === 0 && sb !== 0) return 1;
+                if (sb === 0 && sa !== 0) return -1;
+                return sa - sb;
+              });
+              return (
+                <section key={s.slug} className="space-y-2">
+                  <h3 className="text-sm font-semibold">{s.label}</h3>
+                  <div className="grid grid-cols-2 gap-3">{list.map(renderCard)}</div>
+                </section>
+              );
+            })}
+
+            {others.length > 0 && (
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold">Other</h3>
+                <div className="grid grid-cols-2 gap-3">{others.map(renderCard)}</div>
+              </section>
+            )}
+          </div>
+        );
+      })()}
+
     </div>
   );
 }

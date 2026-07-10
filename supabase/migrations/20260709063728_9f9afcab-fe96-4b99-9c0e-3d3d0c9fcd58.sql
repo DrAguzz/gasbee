@@ -1,0 +1,1 @@
+UPDATE public.categories SET name = 'Accessories / Inspection' WHERE name = 'Accessories';

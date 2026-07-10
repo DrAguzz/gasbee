@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatOrderItemName } from "@/lib/receipt";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -61,7 +62,7 @@ export default function OrderDetail() {
           <h2 className="mb-3 font-semibold">Items</h2>
           {items.map((it) => (
             <div key={it.id} className="flex justify-between border-b py-2 last:border-0 text-sm">
-              <span>{it.product_name} × {it.quantity}</span><span>{fmt(it.subtotal)}</span>
+              <span>{formatOrderItemName(it)} × {it.quantity}</span><span>{fmt(it.subtotal)}</span>
             </div>
           ))}
           <div className="mt-3 flex justify-between font-semibold"><span>Total</span><span>{fmt(order.total_amount)}</span></div>

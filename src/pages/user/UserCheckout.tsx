@@ -34,9 +34,7 @@ export default function UserCheckout() {
   const [useCredit, setUseCredit] = useState(true);
 
   useEffect(() => {
-    supabase.from("app_settings").select("*").in("key", [
-      "service_fee", "delivery_base_fee", "delivery_base_km", "delivery_per_km", "processing_fee",
-    ]).then(({ data }) => {
+    supabase.rpc("get_public_fee_settings").then(({ data }) => {
       const m: Record<string, number> = {};
       (data ?? []).forEach((r: any) => {
         const raw = typeof r.value === "string" ? r.value : (r.value?.value ?? r.value);
@@ -51,6 +49,7 @@ export default function UserCheckout() {
         processingFee: m.processing_fee ?? DEFAULT_FEE_CONFIG.processingFee,
       });
     });
+
   }, []);
 
   const addr = addresses.find((a) => a.id === addrId);
@@ -147,10 +146,21 @@ export default function UserCheckout() {
 
     if (error || !order) { toast.error(error?.message ?? "Order failed"); setBusy(false); return; }
 
+    const CATEGORY_LABEL: Record<string, string> = {
+      "lpg-refill": "LPG Refill",
+      "cylinder": "New Cylinder Gas",
+      "industrial-gas": "Industrial Gas",
+      "accessories": "Accessories",
+    };
+    const buildName = (it: any) => {
+      const catLabel = it.category_slug ? CATEGORY_LABEL[it.category_slug] ?? null : null;
+      const parts = [catLabel, it.name].filter(Boolean);
+      return parts.join(", ");
+    };
     const orderItems = items.map((it) => ({
       order_id: order.id,
       product_id: it.product_id,
-      product_name: it.name,
+      product_name: buildName(it),
       product_image_url: it.image_url,
       type: (it.type === "new" ? "new_cylinder" : it.type) as "refill" | "new_cylinder" | "deposit",
       cylinder_size_kg: it.cylinder_size_kg,
@@ -348,9 +358,24 @@ export default function UserCheckout() {
               Please confirm your delivery details, payment method and total amount before we process your order.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-1 rounded-md border bg-muted/30 p-3 text-sm">
+          <div className="space-y-3 rounded-md border bg-muted/30 p-3 text-sm">
+            <div>
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Items ({items.reduce((n, it) => n + it.quantity, 0)})</div>
+              <ul className="space-y-1">
+                {items.map((it) => {
+                  const catLabel = ({ "lpg-refill": "LPG Refill", "cylinder": "New Cylinder Gas", "industrial-gas": "Industrial Gas", "accessories": "Accessories" } as Record<string, string>)[it.category_slug ?? ""] ?? null;
+                  const fullName = [catLabel, it.name].filter(Boolean).join(", ");
+                  return (
+                    <li key={`${it.product_id}-${it.type}`} className="flex justify-between gap-2">
+                      <span className="font-medium">{fullName} × {it.quantity}</span>
+                      <span className="text-muted-foreground">RM {(it.unit_price * it.quantity).toFixed(2)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
             {addr && (
-              <div><span className="text-muted-foreground">Deliver to: </span><span className="font-medium">{addr.label ?? "Address"} — {addr.address_line1}, {addr.postcode} {addr.city}</span></div>
+              <div className="border-t pt-2"><span className="text-muted-foreground">Deliver to: </span><span className="font-medium">{addr.label ?? "Address"} — {addr.address_line1}, {addr.postcode} {addr.city}</span></div>
             )}
             <div><span className="text-muted-foreground">Payment: </span><span className="font-medium">{paymentMethod === "fpx" ? "FPX (Online Transfer)" : (paymentMethod === "card" ? "Credit Card" : (paymentMethod === "cod" ? "COD (Cash on Delivery)" : paymentMethod.toUpperCase()))}</span></div>
             <div><span className="text-muted-foreground">Total: </span><span className="font-bold text-primary">RM {total.toFixed(2)}</span></div>

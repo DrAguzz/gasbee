@@ -6,10 +6,15 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { toast } from "sonner";
 import { Phone, Navigation, Clock, CheckCircle2, Package, Truck, Home, Download } from "lucide-react";
-import { downloadReceipt } from "@/lib/receipt";
+import { downloadReceipt, formatOrderItemName } from "@/lib/receipt";
 import { MapPicker } from "@/components/MapPicker";
 import { OrderChat } from "@/components/OrderChat";
 import { OrderRating } from "@/components/user/OrderRating";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
 
 const STEPS = [
   { key: "pending", label: "Pending", icon: Clock },
@@ -24,10 +29,15 @@ export default function UserOrderDetail() {
   const [o, setO] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [riderLoc, setRiderLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelNote, setCancelNote] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     const load = async () => {
+
       const { data: order } = await supabase.from("orders").select("*, merchants(name, phone, latitude, longitude), riders(id, full_name, phone, current_lat, current_lng, vehicle_type, vehicle_plate)").eq("id", id).maybeSingle();
       setO(order);
       if ((order as any)?.riders?.current_lat) {
@@ -62,13 +72,91 @@ export default function UserOrderDetail() {
 
   if (!o) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
-  const stepIdx = STEPS.findIndex((s) => s.key === o.status);
-  const cancel = async () => {
-    const { error } = await supabase.from("orders").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", o.id);
-    if (error) toast.error(error.message); else { toast.success("Cancelled"); setO({ ...o, status: "cancelled" }); }
+  const STATUS_TO_STEP: Record<string, number> = {
+    pending: 0,
+    confirmed: 1,
+    preparing: 2, assigned: 2, rider_accepted: 2, arrived_at_merchant: 2,
+    out_for_delivery: 3, picked_up: 3, on_delivery: 3, arrived_at_customer: 3,
+    delivered: 4,
+  };
+  const stepIdx = STATUS_TO_STEP[o.status] ?? -1;
+
+  const CANCEL_REASONS = [
+    "Tersalah tempah",
+    "Nak tukar produk / kuantiti",
+    "Nak tukar alamat penghantaran",
+    "Merchant terlalu lambat",
+    "Jumpa harga lebih murah di tempat lain",
+    "Lain-lain",
+  ];
+
+  const submitCancel = async () => {
+    if (!cancelReason) { toast.error("Sila pilih sebab pembatalan"); return; }
+    setCancelling(true);
+    const reasonText = cancelNote.trim() ? `${cancelReason} — ${cancelNote.trim()}` : cancelReason;
+    const { error } = await supabase.from("orders").update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      failure_reason: reasonText,
+    }).eq("id", o.id);
+    setCancelling(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pesanan dibatalkan");
+    setO({ ...o, status: "cancelled", failure_reason: reasonText });
+    setCancelOpen(false);
+    setCancelReason(""); setCancelNote("");
   };
 
+
   const a = o.address_snapshot ?? {};
+
+  const renderTracker = () => (
+    <>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-sm font-semibold">Order Tracking</div>
+        <div className="text-[11px] font-medium text-primary">
+          {Math.round(((stepIdx + 1) / STEPS.length) * 100)}% complete
+        </div>
+      </div>
+      <div className="relative">
+        <div className="absolute left-5 right-5 top-5 h-1 -translate-y-1/2 rounded-full bg-muted" />
+        <div
+          className="absolute left-5 top-5 h-1 -translate-y-1/2 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-700 ease-out"
+          style={{ width: `calc((100% - 2.5rem) * ${stepIdx / (STEPS.length - 1)})` }}
+        />
+        <div className="relative flex items-start justify-between">
+          {STEPS.map((s, i) => {
+            const Icon = s.icon;
+            const isActive = i === stepIdx;
+            const isDone = i <= stepIdx;
+            return (
+              <div key={s.key} className="flex flex-1 flex-col items-center text-center">
+                <div
+                  className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-500 ${
+                    isDone
+                      ? "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30"
+                      : "bg-muted text-muted-foreground"
+                  } ${isActive ? "scale-110 ring-4 ring-primary/20" : ""}`}
+                >
+                  {isActive && (
+                    <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />
+                  )}
+                  <Icon className="relative h-4 w-4" />
+                </div>
+                <div
+                  className={`mt-2 text-[10px] font-medium leading-tight transition-colors ${
+                    isDone ? "text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  {s.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
 
 
   return (
@@ -86,53 +174,11 @@ export default function UserOrderDetail() {
 
       {stepIdx >= 0 && o.status !== "cancelled" && (
         <div className="glass-category-card animate-fade-in rounded-2xl p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="text-sm font-semibold">Order Tracking</div>
-            <div className="text-[11px] font-medium text-primary">
-              {Math.round(((stepIdx + 1) / STEPS.length) * 100)}% complete
-            </div>
-          </div>
-          <div className="relative">
-            {/* Progress line background */}
-            <div className="absolute left-5 right-5 top-5 h-1 -translate-y-1/2 rounded-full bg-muted" />
-            {/* Progress line filled */}
-            <div
-              className="absolute left-5 top-5 h-1 -translate-y-1/2 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-700 ease-out"
-              style={{ width: `calc((100% - 2.5rem) * ${stepIdx / (STEPS.length - 1)})` }}
-            />
-            <div className="relative flex items-start justify-between">
-              {STEPS.map((s, i) => {
-                const Icon = s.icon;
-                const isActive = i === stepIdx;
-                const isDone = i <= stepIdx;
-                return (
-                  <div key={s.key} className="flex flex-1 flex-col items-center text-center">
-                    <div
-                      className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-500 ${
-                        isDone
-                          ? "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30"
-                          : "bg-muted text-muted-foreground"
-                      } ${isActive ? "scale-110 ring-4 ring-primary/20" : ""}`}
-                    >
-                      {isActive && (
-                        <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />
-                      )}
-                      <Icon className="relative h-4 w-4" />
-                    </div>
-                    <div
-                      className={`mt-2 text-[10px] font-medium leading-tight transition-colors ${
-                        isDone ? "text-foreground" : "text-muted-foreground"
-                      }`}
-                    >
-                      {s.label}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {renderTracker()}
         </div>
       )}
+
+
 
       {(() => {
         // Live rider tracking — available once rider has accepted the job, regardless of payment method (COD or online).
@@ -196,6 +242,7 @@ export default function UserOrderDetail() {
                 {etaMin != null && <span> · ETA ~{etaMin} min</span>}
               </div>
             </div>
+
             {riderLoc ? (
               <MapPicker
                 lat={riderLoc.lat}
@@ -249,7 +296,7 @@ export default function UserOrderDetail() {
       <Card className="divide-y">
         {items.map((it) => (
           <div key={it.id} className="flex justify-between p-3 text-sm">
-            <span>{it.product_name} × {it.quantity}</span>
+            <span>{formatOrderItemName(it)} × {it.quantity}</span>
             <span>RM {Number(it.subtotal).toFixed(2)}</span>
           </div>
         ))}
@@ -257,7 +304,9 @@ export default function UserOrderDetail() {
 
       <Card className="space-y-1 p-3 text-sm">
         <div className="flex justify-between"><span>Subtotal</span><span>RM {Number(o.items_subtotal).toFixed(2)}</span></div>
-        <div className="flex justify-between"><span>Delivery</span><span>RM {Number(o.delivery_fee).toFixed(2)}</span></div>
+        <div className="flex justify-between"><span>Delivery Fee</span><span>RM {Number(o.delivery_fee).toFixed(2)}</span></div>
+        {Number(o.service_fee) > 0 && <div className="flex justify-between"><span>Service Fee</span><span>RM {Number(o.service_fee).toFixed(2)}</span></div>}
+        {Number(o.processing_fee) > 0 && <div className="flex justify-between"><span>Processing Fee</span><span>RM {Number(o.processing_fee).toFixed(2)}</span></div>}
         {Number(o.discount) > 0 && <div className="flex justify-between text-primary"><span>Discount</span><span>- RM {Number(o.discount).toFixed(2)}</span></div>}
         <div className="flex justify-between border-t pt-2 font-bold"><span>Total</span><span className="text-primary">RM {Number(o.total_amount).toFixed(2)}</span></div>
         <div className="flex justify-between pt-1 text-xs"><span>Payment</span><span className="uppercase">{o.payment_method === "fpx" ? "FPX (Online Transfer)" : (o.payment_method === "card" ? "Credit Card" : (o.payment_method === "cod" ? "COD (Cash on Delivery)" : (o.payment_method ?? "—")))} · {o.payment_status}</span></div>
@@ -296,7 +345,7 @@ export default function UserOrderDetail() {
       )}
 
       <div className="flex flex-wrap gap-2">
-        {["pending","confirmed"].includes(o.status) && <Button variant="destructive" className="flex-1" onClick={cancel}>Cancel</Button>}
+        {["pending","confirmed"].includes(o.status) && <Button variant="destructive" className="flex-1" onClick={() => setCancelOpen(true)}>Cancel</Button>}
         {o.payment_status === "paid" && (
           <Button
             variant="outline"
@@ -310,7 +359,35 @@ export default function UserOrderDetail() {
           <Button asChild variant="outline" className="flex-1"><Link to={`/user/refund?order=${o.id}`}>Request refund</Link></Button>
         )}
       </div>
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Batalkan pesanan</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">Sebab pembatalan *</Label>
+              <RadioGroup value={cancelReason} onValueChange={setCancelReason} className="mt-2 space-y-2">
+                {CANCEL_REASONS.map((r) => (
+                  <label key={r} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <RadioGroupItem value={r} id={`cr-${r}`} />
+                    <span>{r}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </div>
+            <div>
+              <Label className="text-sm">Nota tambahan (pilihan)</Label>
+              <Textarea value={cancelNote} onChange={(e) => setCancelNote(e.target.value.slice(0, 500))} placeholder="Ceritakan lebih lanjut…" maxLength={500} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={cancelling}>Kembali</Button>
+            <Button variant="destructive" onClick={submitCancel} disabled={cancelling || !cancelReason}>{cancelling ? "Membatalkan…" : "Sahkan batal"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 

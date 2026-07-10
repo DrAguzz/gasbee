@@ -1686,9 +1686,17 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_public_fee_settings: {
+        Args: never
+        Returns: {
+          key: string
+          value: Json
+        }[]
       }
       has_role: {
         Args: {
