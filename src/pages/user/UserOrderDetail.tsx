@@ -85,8 +85,6 @@ export default function UserOrderDetail() {
     "Tersalah tempah",
     "Nak tukar produk / kuantiti",
     "Nak tukar alamat penghantaran",
-    "Merchant terlalu lambat",
-    "Jumpa harga lebih murah di tempat lain",
     "Lain-lain",
   ];
 
@@ -379,6 +377,9 @@ export default function UserOrderDetail() {
               <Label className="text-sm">Nota tambahan (pilihan)</Label>
               <Textarea value={cancelNote} onChange={(e) => setCancelNote(e.target.value.slice(0, 500))} placeholder="Ceritakan lebih lanjut…" maxLength={500} rows={3} />
             </div>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold">Note:</span> Cancellation Policy - Order Cancellation (Chargeable). If the order is cancelled after the rider has accepted and/or picked up the order for delivery, a cancellation fee will be charged.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={cancelling}>Kembali</Button>
