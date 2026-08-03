@@ -7,6 +7,9 @@ project_id = "dkxjykxvljppdiaekvwk"
     verify_jwt = true
   [functions.chip-webhook]
     verify_jwt = false
+  [functions.chip-test-send-connection]
+    verify_jwt = true
+
   [functions.merchant-create-rider]
     verify_jwt = true
   [functions.merchant-create-staff]
