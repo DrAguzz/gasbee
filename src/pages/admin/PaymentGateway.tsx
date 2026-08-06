@@ -118,12 +118,14 @@ function GatewayForm({
   const testConnection = async () => {
     setTesting(true);
     setTestResult(null);
+    const cleaned = cleanConfig();
+    setConfig(cleaned);
     const { data, error } = await supabase.functions.invoke(testFunction, {
       body: {
         mode,
-        api_key: config.api_key,
-        api_secret: config.api_secret,
-        brand_id: config.brand_id,
+        api_key: cleaned.api_key,
+        api_secret: cleaned.api_secret,
+        brand_id: cleaned.brand_id,
       },
     });
 
