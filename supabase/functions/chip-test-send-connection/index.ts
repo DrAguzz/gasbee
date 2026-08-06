@@ -5,6 +5,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+async function hmacSha512Hex(secret: string, message: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-512" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -29,13 +41,25 @@ Deno.serve(async (req) => {
     );
     if (!isAdmin) throw new Error("Forbidden");
 
-    const { mode, api_key } = await req.json();
+    const { mode, api_key, api_secret } = await req.json();
     if (!api_key) throw new Error("api_key required");
+    if (!api_secret) throw new Error("api_secret required (CHIP Send uses API Key + API Secret)");
 
-    const base = "https://gate.chip-in.asia/api/v1";
-    // Send API: listing accounts is a lightweight, non-destructive credential check
-    const res = await fetch(`${base}/send/accounts/`, {
-      headers: { Authorization: `Bearer ${api_key}` },
+    // CHIP Send lives on a different host than CHIP Collect (gate.chip-in.asia)
+    const base = mode === "live"
+      ? "https://api.chip-in.asia/api"
+      : "https://staging-api.chip-in.asia/api";
+
+    const epoch = Math.floor(Date.now() / 1000).toString();
+    const checksum = await hmacSha512Hex(api_secret, epoch);
+
+    const res = await fetch(`${base}/send_limits/`, {
+      headers: {
+        Authorization: `Bearer ${api_key}`,
+        epoch,
+        checksum,
+        "Content-Type": "application/json",
+      },
     });
     const text = await res.text();
     if (!res.ok) {
@@ -46,11 +70,11 @@ Deno.serve(async (req) => {
     }
     let parsed: any = null;
     try { parsed = JSON.parse(text); } catch {}
-    const accounts = Array.isArray(parsed) ? parsed : (parsed?.results ?? []);
+    const limits = Array.isArray(parsed) ? parsed : (parsed?.results ?? []);
     return new Response(
       JSON.stringify({
         ok: true,
-        message: `Connected to CHIP Send (${mode}). ${Array.isArray(accounts) ? accounts.length : 0} bank account(s) found.`,
+        message: `Connected to CHIP Send (${mode}). ${Array.isArray(limits) ? limits.length : 0} send limit record(s) returned.`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
