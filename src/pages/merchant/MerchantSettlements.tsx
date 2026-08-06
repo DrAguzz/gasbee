@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMerchantContext } from "@/hooks/useMerchantContext";
 import { Card } from "@/components/ui/card";
+import PayoutBankAccountCard from "@/components/payouts/PayoutBankAccountCard";
+
 
 export default function MerchantSettlements() {
   const { merchant } = useMerchantContext();

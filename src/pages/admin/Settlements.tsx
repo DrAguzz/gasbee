@@ -19,6 +19,18 @@ export default function Settlements() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ merchant_id: "", period_start: "", period_end: "" });
   const [busy, setBusy] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const payViaChipSend = async (id: string) => {
+    setPayingId(id);
+    const { data, error } = await supabase.functions.invoke("chip-send-payout", { body: { settlement_id: id } });
+    setPayingId(null);
+    if (error) return toast.error(error.message);
+    if (!data?.ok) { load(); return toast.error(data?.error ?? "Payout failed."); }
+    toast.success(data.message);
+    load();
+  };
+
 
   const load = async () => {
     const { data } = await supabase.from("settlements").select("*").order("period_end", { ascending: false }).limit(200);
