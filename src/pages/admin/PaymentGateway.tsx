@@ -14,6 +14,7 @@ import { CreditCard, Send, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from "l
 type ChipConfig = {
   brand_id: string;
   api_key: string;
+  api_secret: string;
   success_redirect: string;
   failure_redirect: string;
 };
@@ -27,7 +28,9 @@ type GatewayFormProps = {
   webhookFunction: string;
   webhookHint: string;
   brandLabel: string;
+  requireSecret?: boolean;
 };
+
 
 function GatewayForm({
   provider,
