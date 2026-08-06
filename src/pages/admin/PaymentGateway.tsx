@@ -186,6 +186,28 @@ function GatewayForm({
         </p>
       </div>
 
+      {requireSecret && (
+        <div>
+          <Label>API Secret</Label>
+          <div className="flex gap-2">
+            <Input
+              type={showSecret ? "text" : "password"}
+              value={config.api_secret}
+              onChange={(e) => setConfig({ ...config, api_secret: e.target.value })}
+              placeholder="CHIP Send API secret"
+            />
+            <Button type="button" variant="outline" size="icon" onClick={() => setShowSecret((s) => !s)}>
+              {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            CHIP Send signs every request with an HMAC checksum, so the API Secret is required in addition to the API Key.
+          </p>
+        </div>
+      )}
+
+
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label>Success redirect URL (optional)</Label>
