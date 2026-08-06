@@ -136,7 +136,7 @@ export default function UserCheckout() {
       discount: discount + creditApplied,
       total_amount: total,
       payment_method: paymentMethod,
-      payment_status: total === 0 ? "paid" : "pending",
+      payment_status: "pending",
       status: "pending",
       delivery_type: deliveryType,
       scheduled_at: deliveryType === "scheduled" ? scheduledAt : null,
