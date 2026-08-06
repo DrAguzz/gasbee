@@ -14,6 +14,7 @@ import { CreditCard, Send, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from "l
 type ChipConfig = {
   brand_id: string;
   api_key: string;
+  api_secret: string;
   success_redirect: string;
   failure_redirect: string;
 };
@@ -27,7 +28,9 @@ type GatewayFormProps = {
   webhookFunction: string;
   webhookHint: string;
   brandLabel: string;
+  requireSecret?: boolean;
 };
+
 
 function GatewayForm({
   provider,
@@ -38,11 +41,13 @@ function GatewayForm({
   webhookFunction,
   webhookHint,
   brandLabel,
+  requireSecret = false,
 }: GatewayFormProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const [enabled, setEnabled] = useState(false);
@@ -50,6 +55,7 @@ function GatewayForm({
   const [config, setConfig] = useState<ChipConfig>({
     brand_id: "",
     api_key: "",
+    api_secret: "",
     success_redirect: "",
     failure_redirect: "",
   });
@@ -69,6 +75,7 @@ function GatewayForm({
         setConfig({
           brand_id: (data.config as any)?.brand_id ?? "",
           api_key: (data.config as any)?.api_key ?? "",
+          api_secret: (data.config as any)?.api_secret ?? "",
           success_redirect: (data.config as any)?.success_redirect ?? "",
           failure_redirect: (data.config as any)?.failure_redirect ?? "",
         });
@@ -101,8 +108,14 @@ function GatewayForm({
     setTesting(true);
     setTestResult(null);
     const { data, error } = await supabase.functions.invoke(testFunction, {
-      body: { mode, api_key: config.api_key, brand_id: config.brand_id },
+      body: {
+        mode,
+        api_key: config.api_key,
+        api_secret: config.api_secret,
+        brand_id: config.brand_id,
+      },
     });
+
     setTesting(false);
     if (error) {
       setTestResult({ ok: false, msg: error.message });
@@ -172,6 +185,28 @@ function GatewayForm({
           Find it in your CHIP dashboard → Developers → API Keys. Stored encrypted; admin-only.
         </p>
       </div>
+
+      {requireSecret && (
+        <div>
+          <Label>API Secret</Label>
+          <div className="flex gap-2">
+            <Input
+              type={showSecret ? "text" : "password"}
+              value={config.api_secret}
+              onChange={(e) => setConfig({ ...config, api_secret: e.target.value })}
+              placeholder="CHIP Send API secret"
+            />
+            <Button type="button" variant="outline" size="icon" onClick={() => setShowSecret((s) => !s)}>
+              {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            CHIP Send signs every request with an HMAC checksum, so the API Secret is required in addition to the API Key.
+          </p>
+        </div>
+      )}
+
+
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -260,7 +295,9 @@ export default function PaymentGateway() {
             webhookFunction="chip-send-webhook"
             webhookHint="Add this as the callback URL in your CHIP Send settings."
             brandLabel="Brand ID (Send / Instant Transfer)"
+            requireSecret
           />
+
         </TabsContent>
       </Tabs>
     </div>
