@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { CreditCard, Send, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import ChipSendBalance from "@/components/admin/ChipSendBalance";
+
 
 type ChipConfig = {
   brand_id: string;
@@ -315,6 +317,7 @@ export default function PaymentGateway() {
         <TabsList>
           <TabsTrigger value="collect">Payment Collect</TabsTrigger>
           <TabsTrigger value="send">Payment Send</TabsTrigger>
+          <TabsTrigger value="balance">Send Balance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="collect" className="mt-4">
@@ -344,7 +347,12 @@ export default function PaymentGateway() {
             requireBrand={false}
           />
         </TabsContent>
+
+        <TabsContent value="balance" className="mt-4">
+          <ChipSendBalance />
+        </TabsContent>
       </Tabs>
+
     </div>
   );
 }
