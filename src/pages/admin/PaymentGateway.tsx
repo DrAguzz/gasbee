@@ -51,6 +51,7 @@ function GatewayForm({
   const [showKey, setShowKey] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [testRaw, setTestRaw] = useState<string | null>(null);
 
   const [enabled, setEnabled] = useState(false);
   const [mode, setMode] = useState<"sandbox" | "live">("sandbox");
