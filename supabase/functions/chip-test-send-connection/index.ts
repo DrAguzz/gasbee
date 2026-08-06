@@ -41,7 +41,12 @@ Deno.serve(async (req) => {
     );
     if (!isAdmin) throw new Error("Forbidden");
 
-    const { mode, api_key, api_secret } = await req.json();
+    const body = await req.json();
+    const mode = body.mode;
+    // Trim: copy-pasted keys often carry leading/trailing whitespace, which breaks
+    // both the Bearer header and the HMAC signing string.
+    const api_key = String(body.api_key ?? "").trim();
+    const api_secret = String(body.api_secret ?? "").trim();
     if (!api_key) throw new Error("api_key required");
     if (!api_secret) throw new Error("api_secret required (CHIP Send uses API Key + API Secret)");
     // CHIP Send does not use a Brand ID; authentication is API Key + HMAC-SHA512 signature.
