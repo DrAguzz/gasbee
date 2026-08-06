@@ -130,14 +130,21 @@ export default function Settlements() {
                 <td className="p-3 text-xs">{r.paid_at ? new Date(r.paid_at).toLocaleDateString() : "—"}</td>
                 <td className="p-3 text-right">
                   <div className="flex justify-end gap-2">
-                    {r.status === "pending" && <Button size="sm" onClick={() => setStatus(r.id, "processing")}>Process</Button>}
+                    {r.status !== "paid" && !r.chip_send_instruction_id && (
+                      <Button size="sm" onClick={() => payViaChipSend(r.id)} disabled={payingId === r.id}>
+                        {payingId === r.id ? "Sending…" : "Pay via CHIP Send"}
+                      </Button>
+                    )}
+                    {r.status === "pending" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "processing")}>Process</Button>}
                     {r.status === "processing" && <>
-                      <Button size="sm" onClick={() => setStatus(r.id, "paid", r.merchant_id)}>Mark paid</Button>
+                      <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "paid", r.merchant_id)}>Mark paid</Button>
                       <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "failed")}>Failed</Button>
                     </>}
-                    {r.status === "failed" && <Button size="sm" onClick={() => setStatus(r.id, "processing")}>Retry</Button>}
+                    {r.status === "failed" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "processing")}>Retry</Button>}
                   </div>
+                  {r.payout_error && <p className="mt-1 text-right text-xs text-destructive">{r.payout_error}</p>}
                 </td>
+
               </tr>
             ))}
             {rows.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No settlements.</td></tr>}
