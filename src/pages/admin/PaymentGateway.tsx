@@ -295,7 +295,9 @@ export default function PaymentGateway() {
             webhookFunction="chip-send-webhook"
             webhookHint="Add this as the callback URL in your CHIP Send settings."
             brandLabel="Brand ID (Send / Instant Transfer)"
+            requireSecret
           />
+
         </TabsContent>
       </Tabs>
     </div>
