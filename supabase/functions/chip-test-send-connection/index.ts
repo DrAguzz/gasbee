@@ -78,8 +78,15 @@ Deno.serve(async (req) => {
         : res.status === 404
         ? " 'Application not found' means this API Key is not registered on the selected environment. Sandbox/staging needs a separate staging API Key + Secret issued by CHIP — a live key will not work on staging."
         : "";
+      let errParsed: any = null;
+      try { errParsed = JSON.parse(text); } catch {}
       return new Response(
-        JSON.stringify({ ok: false, error: `CHIP Send ${res.status}: ${detail}${hint}` }),
+        JSON.stringify({
+          ok: false,
+          error: `CHIP Send ${res.status}: ${detail}${hint}`,
+          status: res.status,
+          data: errParsed ?? text,
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -95,6 +102,8 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         message: `Connected to CHIP Send (${mode}). ${Array.isArray(accounts) ? accounts.length : 0} account(s) found${balances ? ` — ${balances}` : ""}.`,
+        status: res.status,
+        data: parsed ?? text,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
