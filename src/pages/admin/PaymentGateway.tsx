@@ -119,6 +119,7 @@ function GatewayForm({
   const testConnection = async () => {
     setTesting(true);
     setTestResult(null);
+    setTestRaw(null);
     const cleaned = cleanConfig();
     setConfig(cleaned);
     const { data, error } = await supabase.functions.invoke(testFunction, {
@@ -134,6 +135,11 @@ function GatewayForm({
     if (error) {
       setTestResult({ ok: false, msg: error.message });
       return;
+    }
+    if (data?.data !== undefined) {
+      setTestRaw(
+        typeof data.data === "string" ? data.data : JSON.stringify(data.data, null, 2),
+      );
     }
     if (data?.ok) {
       setTestResult({ ok: true, msg: data.message || "Connection successful" });
@@ -257,6 +263,29 @@ function GatewayForm({
           <span className="break-all">{testResult.msg}</span>
         </div>
       )}
+
+      {testRaw && (
+        <div className="rounded-md border bg-muted/40 p-3">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-semibold">API response (JSON)</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(testRaw);
+                toast.success("JSON copied");
+              }}
+            >
+              Copy
+            </Button>
+          </div>
+          <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-all text-xs">
+            {testRaw}
+          </pre>
+        </div>
+      )}
+
 
       <div className="flex flex-wrap gap-2 pt-2">
         <Button onClick={save} disabled={saving}>
