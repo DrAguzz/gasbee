@@ -976,6 +976,92 @@ export type Database = {
           },
         ]
       }
+      payout_bank_accounts: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_code: string
+          chip_bank_account_id: number | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          is_default: boolean
+          merchant_id: string | null
+          owner_type: string
+          reference: string | null
+          rejection_reason: string | null
+          rider_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          bank_code: string
+          chip_bank_account_id?: number | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_default?: boolean
+          merchant_id?: string | null
+          owner_type: string
+          reference?: string | null
+          rejection_reason?: string | null
+          rider_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_code?: string
+          chip_bank_account_id?: number | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_default?: boolean
+          merchant_id?: string | null
+          owner_type?: string
+          reference?: string | null
+          rejection_reason?: string | null
+          rider_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_bank_accounts_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_bank_accounts_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_bank_accounts_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_bank_accounts_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category_id: string | null
@@ -1349,6 +1435,7 @@ export type Database = {
       }
       settlements: {
         Row: {
+          chip_send_instruction_id: number | null
           commission_amount: number
           created_at: string
           gross_sales: number
@@ -1357,12 +1444,15 @@ export type Database = {
           net_payout: number
           notes: string | null
           paid_at: string | null
+          payout_error: string | null
+          payout_state: string | null
           period_end: string
           period_start: string
           status: Database["public"]["Enums"]["settlement_status"]
           updated_at: string
         }
         Insert: {
+          chip_send_instruction_id?: number | null
           commission_amount?: number
           created_at?: string
           gross_sales?: number
@@ -1371,12 +1461,15 @@ export type Database = {
           net_payout?: number
           notes?: string | null
           paid_at?: string | null
+          payout_error?: string | null
+          payout_state?: string | null
           period_end: string
           period_start: string
           status?: Database["public"]["Enums"]["settlement_status"]
           updated_at?: string
         }
         Update: {
+          chip_send_instruction_id?: number | null
           commission_amount?: number
           created_at?: string
           gross_sales?: number
@@ -1385,6 +1478,8 @@ export type Database = {
           net_payout?: number
           notes?: string | null
           paid_at?: string | null
+          payout_error?: string | null
+          payout_state?: string | null
           period_end?: string
           period_start?: string
           status?: Database["public"]["Enums"]["settlement_status"]

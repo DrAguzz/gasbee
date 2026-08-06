@@ -19,6 +19,18 @@ export default function Settlements() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ merchant_id: "", period_start: "", period_end: "" });
   const [busy, setBusy] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const payViaChipSend = async (id: string) => {
+    setPayingId(id);
+    const { data, error } = await supabase.functions.invoke("chip-send-payout", { body: { settlement_id: id } });
+    setPayingId(null);
+    if (error) return toast.error(error.message);
+    if (!data?.ok) { load(); return toast.error(data?.error ?? "Payout failed."); }
+    toast.success(data.message);
+    load();
+  };
+
 
   const load = async () => {
     const { data } = await supabase.from("settlements").select("*").order("period_end", { ascending: false }).limit(200);
@@ -130,14 +142,21 @@ export default function Settlements() {
                 <td className="p-3 text-xs">{r.paid_at ? new Date(r.paid_at).toLocaleDateString() : "—"}</td>
                 <td className="p-3 text-right">
                   <div className="flex justify-end gap-2">
-                    {r.status === "pending" && <Button size="sm" onClick={() => setStatus(r.id, "processing")}>Process</Button>}
+                    {r.status !== "paid" && !r.chip_send_instruction_id && (
+                      <Button size="sm" onClick={() => payViaChipSend(r.id)} disabled={payingId === r.id}>
+                        {payingId === r.id ? "Sending…" : "Pay via CHIP Send"}
+                      </Button>
+                    )}
+                    {r.status === "pending" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "processing")}>Process</Button>}
                     {r.status === "processing" && <>
-                      <Button size="sm" onClick={() => setStatus(r.id, "paid", r.merchant_id)}>Mark paid</Button>
+                      <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "paid", r.merchant_id)}>Mark paid</Button>
                       <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "failed")}>Failed</Button>
                     </>}
-                    {r.status === "failed" && <Button size="sm" onClick={() => setStatus(r.id, "processing")}>Retry</Button>}
+                    {r.status === "failed" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "processing")}>Retry</Button>}
                   </div>
+                  {r.payout_error && <p className="mt-1 text-right text-xs text-destructive">{r.payout_error}</p>}
                 </td>
+
               </tr>
             ))}
             {rows.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No settlements.</td></tr>}
