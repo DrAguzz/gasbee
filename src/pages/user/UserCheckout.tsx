@@ -170,16 +170,16 @@ export default function UserCheckout() {
     }));
     await supabase.from("order_items").insert(orderItems);
 
-    // Mark credit as used + create leftover refund if any
+    // Mark credit as used (server-side, atomic) + create leftover refund if any
     if (creditApplied > 0 && eligibleCredit) {
-      await supabase.from("order_credits").update({
-        status: "used",
-        used_order_id: order.id,
-        leftover_amount: creditLeftover,
-        notes: creditLeftover > 0 ? `Leftover RM ${creditLeftover.toFixed(2)} to be refunded by admin` : null,
-      }).eq("id", eligibleCredit.id);
-
-      if (creditLeftover > 0) {
+      const { error: creditErr } = await supabase.rpc("redeem_order_credit", {
+        _credit_id: eligibleCredit.id,
+        _order_id: order.id,
+        _applied: creditApplied,
+      });
+      if (creditErr) {
+        toast.error("Store credit could not be applied: " + creditErr.message);
+      } else if (creditLeftover > 0) {
         await supabase.from("refunds").insert({
           order_id: eligibleCredit.source_order_id,
           requester_id: user.id,
@@ -192,6 +192,7 @@ export default function UserCheckout() {
         toast.info(`Admin will refund the remaining RM ${creditLeftover.toFixed(2)}.`);
       }
     }
+
 
     clear();
 
