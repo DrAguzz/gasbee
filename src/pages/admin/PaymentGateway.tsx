@@ -41,11 +41,13 @@ function GatewayForm({
   webhookFunction,
   webhookHint,
   brandLabel,
+  requireSecret = false,
 }: GatewayFormProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const [enabled, setEnabled] = useState(false);
@@ -53,6 +55,7 @@ function GatewayForm({
   const [config, setConfig] = useState<ChipConfig>({
     brand_id: "",
     api_key: "",
+    api_secret: "",
     success_redirect: "",
     failure_redirect: "",
   });
@@ -72,6 +75,7 @@ function GatewayForm({
         setConfig({
           brand_id: (data.config as any)?.brand_id ?? "",
           api_key: (data.config as any)?.api_key ?? "",
+          api_secret: (data.config as any)?.api_secret ?? "",
           success_redirect: (data.config as any)?.success_redirect ?? "",
           failure_redirect: (data.config as any)?.failure_redirect ?? "",
         });
@@ -104,8 +108,14 @@ function GatewayForm({
     setTesting(true);
     setTestResult(null);
     const { data, error } = await supabase.functions.invoke(testFunction, {
-      body: { mode, api_key: config.api_key, brand_id: config.brand_id },
+      body: {
+        mode,
+        api_key: config.api_key,
+        api_secret: config.api_secret,
+        brand_id: config.brand_id,
+      },
     });
+
     setTesting(false);
     if (error) {
       setTestResult({ ok: false, msg: error.message });
