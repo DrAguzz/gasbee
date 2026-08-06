@@ -51,10 +51,11 @@ Deno.serve(async (req) => {
       ? "https://api.chip-in.asia/api"
       : "https://staging-api.chip-in.asia/api";
 
+    // Signing string per CHIP Send docs: `${epoch}${api_key}` with no separator.
     const epoch = Math.floor(Date.now() / 1000).toString();
-    const checksum = await hmacSha512Hex(api_secret, epoch);
+    const checksum = await hmacSha512Hex(api_secret, `${epoch}${api_key}`);
 
-    const res = await fetch(`${base}/send_limits/`, {
+    const res = await fetch(`${base}/send/accounts`, {
       headers: {
         Authorization: `Bearer ${api_key}`,
         epoch,
@@ -64,18 +65,29 @@ Deno.serve(async (req) => {
     });
     const text = await res.text();
     if (!res.ok) {
+      const detail = text.slice(0, 300);
+      const hint = res.status === 401
+        ? " Check: API Key & API Secret are from CHIP Control → Settings → Applications, and the server clock must be within 30 seconds of CHIP's."
+        : res.status === 400
+        ? " The epoch/checksum headers may be missing or malformed."
+        : "";
       return new Response(
-        JSON.stringify({ ok: false, error: `CHIP Send ${res.status}: ${text.slice(0, 300)}` }),
+        JSON.stringify({ ok: false, error: `CHIP Send ${res.status}: ${detail}${hint}` }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
     let parsed: any = null;
     try { parsed = JSON.parse(text); } catch {}
-    const limits = Array.isArray(parsed) ? parsed : (parsed?.results ?? []);
+    const accounts = Array.isArray(parsed) ? parsed : (parsed?.results ?? []);
+    const balances = (Array.isArray(accounts) ? accounts : [])
+      .map((a: any) => `${a?.currency ?? ""} ${a?.balance ?? a?.convertible_balance ?? ""}`.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(", ");
     return new Response(
       JSON.stringify({
         ok: true,
-        message: `Connected to CHIP Send (${mode}). ${Array.isArray(limits) ? limits.length : 0} send limit record(s) returned.`,
+        message: `Connected to CHIP Send (${mode}). ${Array.isArray(accounts) ? accounts.length : 0} account(s) found${balances ? ` — ${balances}` : ""}.`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
