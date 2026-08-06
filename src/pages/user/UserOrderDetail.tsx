@@ -410,7 +410,7 @@ function RejectedOptions({ order }: { order: any }) {
       status: "requested",
     });
     if (e1) { toast.error(e1.message); return; }
-    const { error: e2 } = await supabase.from("order_credits").update({ status: "refunded", notes: "User chose full refund" }).eq("id", credit.id);
+    const { error: e2 } = await supabase.rpc("refund_order_credit", { _credit_id: credit.id });
     if (e2) { toast.error(e2.message); return; }
     toast.success("Refund requested. Admin will process shortly.");
     setCredit({ ...credit, status: "refunded" });
