@@ -1818,6 +1818,15 @@ export type Database = {
           read_ct: number
         }[]
       }
+      redeem_order_credit: {
+        Args: { _applied: number; _credit_id: string; _order_id: string }
+        Returns: number
+      }
+      refund_order_credit: { Args: { _credit_id: string }; Returns: undefined }
+      setting_numeric: {
+        Args: { _default: number; _key: string }
+        Returns: number
+      }
       user_merchant_id: { Args: { _user_id: string }; Returns: string }
       validate_promotion: {
         Args: { _code: string }
