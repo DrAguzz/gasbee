@@ -149,7 +149,7 @@ function GatewayForm({
         <Switch checked={enabled} onCheckedChange={setEnabled} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 ${requireBrand ? "sm:grid-cols-2" : ""}`}>
         <div>
           <Label>Environment</Label>
           <Select value={mode} onValueChange={(v) => setMode(v as any)}>
@@ -160,14 +160,16 @@ function GatewayForm({
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label>{brandLabel}</Label>
-          <Input
-            value={config.brand_id}
-            onChange={(e) => setConfig({ ...config, brand_id: e.target.value })}
-            placeholder="e.g. 02xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          />
-        </div>
+        {requireBrand && (
+          <div>
+            <Label>{brandLabel}</Label>
+            <Input
+              value={config.brand_id}
+              onChange={(e) => setConfig({ ...config, brand_id: e.target.value })}
+              placeholder="e.g. 02xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            />
+          </div>
+        )}
       </div>
 
       <div>
