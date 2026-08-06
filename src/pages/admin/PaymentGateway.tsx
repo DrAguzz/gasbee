@@ -43,6 +43,7 @@ function GatewayForm({
   webhookHint,
   brandLabel,
   requireSecret = false,
+  requireBrand = true,
 }: GatewayFormProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
