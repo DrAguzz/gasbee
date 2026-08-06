@@ -86,8 +86,17 @@ function GatewayForm({
     })();
   }, [provider]);
 
+  const cleanConfig = (): ChipConfig => ({
+    ...config,
+    brand_id: config.brand_id.trim(),
+    api_key: config.api_key.trim(),
+    api_secret: config.api_secret.trim(),
+  });
+
   const save = async () => {
     setSaving(true);
+    const cleaned = cleanConfig();
+    setConfig(cleaned);
     const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("payment_gateways")
@@ -96,7 +105,7 @@ function GatewayForm({
           provider,
           enabled,
           mode,
-          config: config as any,
+          config: cleaned as any,
           updated_by: user?.id ?? null,
         },
         { onConflict: "provider" },
