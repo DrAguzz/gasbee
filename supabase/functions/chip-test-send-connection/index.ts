@@ -75,6 +75,8 @@ Deno.serve(async (req) => {
         ? " Check: API Key & API Secret are from CHIP Control → Settings → Applications, and the server clock must be within 30 seconds of CHIP's."
         : res.status === 400
         ? " The epoch/checksum headers may be missing or malformed."
+        : res.status === 404
+        ? " 'Application not found' means this API Key is not registered on the selected environment. Sandbox/staging needs a separate staging API Key + Secret issued by CHIP — a live key will not work on staging."
         : "";
       return new Response(
         JSON.stringify({ ok: false, error: `CHIP Send ${res.status}: ${detail}${hint}` }),
