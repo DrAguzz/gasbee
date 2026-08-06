@@ -29,6 +29,7 @@ type GatewayFormProps = {
   webhookHint: string;
   brandLabel: string;
   requireSecret?: boolean;
+  requireBrand?: boolean;
 };
 
 
