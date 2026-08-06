@@ -41,7 +41,12 @@ Deno.serve(async (req) => {
     );
     if (!isAdmin) throw new Error("Forbidden");
 
-    const { mode, api_key, api_secret } = await req.json();
+    const body = await req.json();
+    const mode = body.mode;
+    // Trim: copy-pasted keys often carry leading/trailing whitespace, which breaks
+    // both the Bearer header and the HMAC signing string.
+    const api_key = String(body.api_key ?? "").trim();
+    const api_secret = String(body.api_secret ?? "").trim();
     if (!api_key) throw new Error("api_key required");
     if (!api_secret) throw new Error("api_secret required (CHIP Send uses API Key + API Secret)");
     // CHIP Send does not use a Brand ID; authentication is API Key + HMAC-SHA512 signature.
@@ -70,6 +75,8 @@ Deno.serve(async (req) => {
         ? " Check: API Key & API Secret are from CHIP Control → Settings → Applications, and the server clock must be within 30 seconds of CHIP's."
         : res.status === 400
         ? " The epoch/checksum headers may be missing or malformed."
+        : res.status === 404
+        ? " 'Application not found' means this API Key is not registered on the selected environment. Sandbox/staging needs a separate staging API Key + Secret issued by CHIP — a live key will not work on staging."
         : "";
       return new Response(
         JSON.stringify({ ok: false, error: `CHIP Send ${res.status}: ${detail}${hint}` }),
