@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
     const { mode, api_key, api_secret } = await req.json();
     if (!api_key) throw new Error("api_key required");
     if (!api_secret) throw new Error("api_secret required (CHIP Send uses API Key + API Secret)");
+    // CHIP Send does not use a Brand ID; authentication is API Key + HMAC-SHA512 signature.
 
     // CHIP Send lives on a different host than CHIP Collect (gate.chip-in.asia)
     const base = mode === "live"
