@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMerchantContext } from "@/hooks/useMerchantContext";
 import { Card } from "@/components/ui/card";
+import PayoutBankAccountCard from "@/components/payouts/PayoutBankAccountCard";
+
 
 export default function MerchantSettlements() {
   const { merchant } = useMerchantContext();
@@ -16,7 +18,9 @@ export default function MerchantSettlements() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Settlements</h1>
+      {merchant && <PayoutBankAccountCard owner={{ owner_type: "merchant", merchant_id: merchant.id }} />}
       <Card className="p-4 text-sm">
+
         <p className="font-semibold">How settlements work</p>
         <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-muted-foreground">
           <li>Gasbee admin generates a settlement for a date range from your paid orders.</li>

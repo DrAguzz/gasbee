@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { SignedImage } from "@/components/SignedImage";
+import PayoutBankAccountCard from "@/components/payouts/PayoutBankAccountCard";
+
 
 export default function RiderProfile() {
   const { user } = useAuth();
@@ -40,6 +42,9 @@ export default function RiderProfile() {
         <Row label="License no" value={r.license_no} />
         <Row label="License expiry" value={r.license_expiry_date ? new Date(r.license_expiry_date).toLocaleDateString() : "—"} />
       </Card>
+
+      <PayoutBankAccountCard owner={{ owner_type: "rider", rider_id: r.id }} title="My payout bank account" />
+
 
       {(!r.license_image_url || expired) && (
         <Card className="border-destructive bg-destructive/10 p-4">
