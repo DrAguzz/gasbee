@@ -1438,6 +1438,7 @@ export type Database = {
           chip_send_instruction_id: number | null
           commission_amount: number
           created_at: string
+          delivery_fee_total: number
           gross_sales: number
           id: string
           merchant_id: string
@@ -1448,6 +1449,8 @@ export type Database = {
           payout_state: string | null
           period_end: string
           period_start: string
+          processing_fee_total: number
+          service_fee_total: number
           status: Database["public"]["Enums"]["settlement_status"]
           updated_at: string
         }
@@ -1455,6 +1458,7 @@ export type Database = {
           chip_send_instruction_id?: number | null
           commission_amount?: number
           created_at?: string
+          delivery_fee_total?: number
           gross_sales?: number
           id?: string
           merchant_id: string
@@ -1465,6 +1469,8 @@ export type Database = {
           payout_state?: string | null
           period_end: string
           period_start: string
+          processing_fee_total?: number
+          service_fee_total?: number
           status?: Database["public"]["Enums"]["settlement_status"]
           updated_at?: string
         }
@@ -1472,6 +1478,7 @@ export type Database = {
           chip_send_instruction_id?: number | null
           commission_amount?: number
           created_at?: string
+          delivery_fee_total?: number
           gross_sales?: number
           id?: string
           merchant_id?: string
@@ -1482,6 +1489,8 @@ export type Database = {
           payout_state?: string | null
           period_end?: string
           period_start?: string
+          processing_fee_total?: number
+          service_fee_total?: number
           status?: Database["public"]["Enums"]["settlement_status"]
           updated_at?: string
         }
