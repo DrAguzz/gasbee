@@ -48,19 +48,25 @@ export default function Settlements() {
   const generate = async () => {
     if (!form.merchant_id || !form.period_start || !form.period_end) return toast.error("All fields required");
     setBusy(true);
-    const { data: orders } = await supabase.from("orders").select("total_amount")
+    const { data: orders } = await supabase.from("orders").select("total_amount,delivery_fee,service_fee,processing_fee")
       .eq("merchant_id", form.merchant_id).eq("payment_status", "paid")
       .gte("created_at", form.period_start).lte("created_at", form.period_end + "T23:59:59");
-    const gross = (orders ?? []).reduce((a, o: any) => a + Number(o.total_amount || 0), 0);
+    const sum = (key: string) => (orders ?? []).reduce((a, o: any) => a + Number(o[key] || 0), 0);
+    const gross = sum("total_amount");
+    const deliveryTotal = sum("delivery_fee");
+    const serviceTotal = sum("service_fee");
+    const processingTotal = sum("processing_fee");
     const m = merchants.find((x) => x.id === form.merchant_id);
     const { data: rate } = await supabase.from("commissions").select("value,type").eq("merchant_id", form.merchant_id).eq("active", true).maybeSingle();
     const { data: defaultRate } = await supabase.from("commissions").select("value,type").eq("is_default", true).eq("active", true).maybeSingle();
     const r = rate ?? defaultRate ?? { value: 10, type: "percent" };
     const commission = r.type === "percent" ? gross * Number(r.value) / 100 : Number(r.value);
-    const net = gross - commission;
+    const net = gross - commission - deliveryTotal - serviceTotal - processingTotal;
     const { error } = await supabase.from("settlements").insert({
       merchant_id: form.merchant_id, period_start: form.period_start, period_end: form.period_end,
-      gross_sales: gross, commission_amount: commission, net_payout: net, status: "pending" as any,
+      gross_sales: gross, commission_amount: commission,
+      delivery_fee_total: deliveryTotal, service_fee_total: serviceTotal, processing_fee_total: processingTotal,
+      net_payout: net, status: "pending" as any,
     });
     setBusy(false);
     if (error) return toast.error(error.message);
