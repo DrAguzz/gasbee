@@ -169,7 +169,7 @@ export default function Settlements() {
 
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No settlements.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">No settlements.</td></tr>}
           </tbody>
         </table>
       </Card>
