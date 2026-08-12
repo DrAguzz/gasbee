@@ -6,13 +6,16 @@ Deno.serve(async (req) => {
     const { admin } = await requireAdmin(req);
     const body = await req.json().catch(() => ({}));
     const settlementId = String(body?.settlement_id ?? "");
-    if (!settlementId) return json({ ok: false, error: "settlement_id is required." }, 400);
+    const riderSettlementId = String(body?.rider_settlement_id ?? "");
+    if (!settlementId && !riderSettlementId) {
+      return json({ ok: false, error: "settlement_id or rider_settlement_id is required." }, 400);
+    }
 
-    const { data: settlement } = await admin
-      .from("settlements")
-      .select("*")
-      .eq("id", settlementId)
-      .maybeSingle();
+    const isRider = !!riderSettlementId;
+    const table = isRider ? "rider_settlements" : "settlements";
+    const rowId = isRider ? riderSettlementId : settlementId;
+
+    const { data: settlement } = await admin.from(table).select("*").eq("id", rowId).maybeSingle();
     if (!settlement) throw new Error("Settlement not found.");
     if (settlement.chip_send_instruction_id) {
       throw new Error("This settlement already has a CHIP Send payout.");
@@ -22,27 +25,35 @@ Deno.serve(async (req) => {
     const amount = Number(settlement.net_payout);
     if (!Number.isFinite(amount) || amount <= 0) throw new Error("Net payout must be greater than zero.");
 
-    const { data: bank } = await admin
+    let bankQuery = admin
       .from("payout_bank_accounts")
       .select("*")
-      .eq("owner_type", "merchant")
-      .eq("merchant_id", settlement.merchant_id)
-      .not("chip_bank_account_id", "is", null)
-      .order("is_default", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!bank) throw new Error("This merchant has no bank account registered with CHIP Send yet.");
+      .not("chip_bank_account_id", "is", null);
+    bankQuery = isRider
+      ? bankQuery.eq("owner_type", "rider").eq("rider_id", settlement.rider_id)
+      : bankQuery.eq("owner_type", "merchant").eq("merchant_id", settlement.merchant_id);
+
+    const { data: bank } = await bankQuery.order("is_default", { ascending: false }).limit(1).maybeSingle();
+    if (!bank) {
+      throw new Error(`This ${isRider ? "rider" : "merchant"} has no bank account registered with CHIP Send yet.`);
+    }
     if (bank.status && !["verified", "pending"].includes(bank.status)) {
-      throw new Error(`Merchant bank account is not usable (status: ${bank.status}).`);
+      throw new Error(`Bank account is not usable (status: ${bank.status}).`);
     }
 
-    const { data: merchant } = await admin
-      .from("merchants")
-      .select("name, email")
-      .eq("id", settlement.merchant_id)
-      .maybeSingle();
+    let recipientEmail: string | undefined = bank.email || undefined;
+    let notifyUserId: string | null = null;
 
-    const reference = `STL-${String(settlement.id).slice(0, 8).toUpperCase()}`;
+    if (isRider) {
+      const { data: rider } = await admin.from("riders").select("user_id, full_name").eq("id", settlement.rider_id).maybeSingle();
+      notifyUserId = rider?.user_id ?? null;
+    } else {
+      const { data: merchant } = await admin.from("merchants").select("owner_id, email").eq("id", settlement.merchant_id).maybeSingle();
+      recipientEmail = recipientEmail || merchant?.email || undefined;
+      notifyUserId = merchant?.owner_id ?? null;
+    }
+
+    const reference = `${isRider ? "RSTL" : "STL"}-${String(settlement.id).slice(0, 8).toUpperCase()}`;
     const creds = await loadChipSendCreds(admin);
 
     const res = await chipSendFetch(creds, "/send/send_instructions", {
@@ -50,18 +61,18 @@ Deno.serve(async (req) => {
       body: {
         bank_account_id: bank.chip_bank_account_id,
         amount: amount.toFixed(2),
-        email: bank.email || merchant?.email || undefined,
-        description: `Settlement payout ${settlement.period_start} to ${settlement.period_end}`.slice(0, 140),
+        email: recipientEmail,
+        description: `${isRider ? "Rider" : "Settlement"} payout ${settlement.period_start} to ${settlement.period_end}`.slice(0, 140),
         reference,
         send_recipient_receipt: true,
       },
     });
 
     if (!res.ok) {
-      await admin.from("settlements").update({
+      await admin.from(table).update({
         payout_state: "failed",
         payout_error: chipError(res.status, res.data).slice(0, 500),
-      }).eq("id", settlementId);
+      }).eq("id", rowId);
       return json({ ok: false, error: chipError(res.status, res.data) });
     }
 
@@ -73,19 +84,16 @@ Deno.serve(async (req) => {
       status: state === "completed" ? "paid" : "processing",
     };
     if (state === "completed") patch.paid_at = new Date().toISOString();
-    await admin.from("settlements").update(patch).eq("id", settlementId);
+    await admin.from(table).update(patch).eq("id", rowId);
 
-    if (merchant) {
-      const { data: m } = await admin.from("merchants").select("owner_id").eq("id", settlement.merchant_id).maybeSingle();
-      if (m?.owner_id) {
-        await admin.from("notifications").insert({
-          user_id: m.owner_id,
-          type: "system",
-          title: state === "completed" ? "Settlement paid" : "Settlement payout in progress",
-          body: `Payout of RM ${amount.toFixed(2)} via CHIP Send (${state}).`,
-          link: "/merchant/settlements",
-        });
-      }
+    if (notifyUserId) {
+      await admin.from("notifications").insert({
+        user_id: notifyUserId,
+        type: "system",
+        title: state === "completed" ? "Settlement paid" : "Settlement payout in progress",
+        body: `Payout of RM ${amount.toFixed(2)} via CHIP Send (${state}).`,
+        link: isRider ? "/merchant/rider/settlements" : "/merchant/settlements",
+      });
     }
 
     return json({ ok: true, message: `Send instruction created (state: ${state}).`, data: res.data });

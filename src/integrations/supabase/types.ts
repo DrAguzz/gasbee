@@ -1352,6 +1352,78 @@ export type Database = {
           },
         ]
       }
+      rider_settlements: {
+        Row: {
+          chip_send_instruction_id: number | null
+          commission_amount: number
+          created_at: string
+          deliveries_count: number
+          delivery_fee_total: number
+          id: string
+          net_payout: number
+          notes: string | null
+          paid_at: string | null
+          payout_error: string | null
+          payout_state: string | null
+          period_end: string
+          period_start: string
+          rider_id: string
+          status: Database["public"]["Enums"]["settlement_status"]
+          updated_at: string
+        }
+        Insert: {
+          chip_send_instruction_id?: number | null
+          commission_amount?: number
+          created_at?: string
+          deliveries_count?: number
+          delivery_fee_total?: number
+          id?: string
+          net_payout?: number
+          notes?: string | null
+          paid_at?: string | null
+          payout_error?: string | null
+          payout_state?: string | null
+          period_end: string
+          period_start: string
+          rider_id: string
+          status?: Database["public"]["Enums"]["settlement_status"]
+          updated_at?: string
+        }
+        Update: {
+          chip_send_instruction_id?: number | null
+          commission_amount?: number
+          created_at?: string
+          deliveries_count?: number
+          delivery_fee_total?: number
+          id?: string
+          net_payout?: number
+          notes?: string | null
+          paid_at?: string | null
+          payout_error?: string | null
+          payout_state?: string | null
+          period_end?: string
+          period_start?: string
+          rider_id?: string
+          status?: Database["public"]["Enums"]["settlement_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rider_settlements_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rider_settlements_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       riders: {
         Row: {
           created_at: string

@@ -7,11 +7,29 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RiderSettlementsTab } from "@/components/admin/RiderSettlementsTab";
 import { toast } from "sonner";
 
 const fmt = (n: any) => new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR" }).format(Number(n || 0));
 
 export default function Settlements() {
+  return (
+    <div className="space-y-4">
+      <div><h1 className="text-2xl font-bold">Settlements</h1><p className="text-sm text-muted-foreground">Merchant and rider payouts.</p></div>
+      <Tabs defaultValue="merchant">
+        <TabsList>
+          <TabsTrigger value="merchant">Merchant</TabsTrigger>
+          <TabsTrigger value="rider">Rider</TabsTrigger>
+        </TabsList>
+        <TabsContent value="merchant" className="mt-4"><MerchantSettlements /></TabsContent>
+        <TabsContent value="rider" className="mt-4"><RiderSettlementsTab /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function MerchantSettlements() {
   const [rows, setRows] = useState<any[]>([]);
   const [merchants, setMerchants] = useState<any[]>([]);
   const [merchantMap, setMerchantMap] = useState<Record<string, string>>({});
@@ -95,7 +113,7 @@ export default function Settlements() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="text-2xl font-bold">Settlements</h1><p className="text-sm text-muted-foreground">Merchant payouts.</p></div>
+        <p className="text-sm text-muted-foreground">Merchant payouts.</p>
         <div className="flex items-center gap-2">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
