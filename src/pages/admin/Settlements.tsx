@@ -123,7 +123,7 @@ export default function Settlements() {
                   <div><Label>To</Label><Input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} /></div>
                 </div>
                 <Button className="w-full" onClick={generate} disabled={busy}>{busy ? "Calculating…" : "Generate"}</Button>
-                <p className="text-xs text-muted-foreground">Sums all paid orders in range and applies merchant's commission rate.</p>
+                <p className="text-xs text-muted-foreground">Sums all paid orders in range, applies merchant's commission rate, then deducts delivery, service and processing fees.</p>
               </div>
             </DialogContent>
           </Dialog>
@@ -133,7 +133,8 @@ export default function Settlements() {
         <table className="w-full text-sm">
           <thead className="bg-muted/40"><tr className="text-left text-xs uppercase text-muted-foreground">
             <th className="p-3">Merchant</th><th className="p-3">Period</th><th className="p-3">Gross</th>
-            <th className="p-3">Commission</th><th className="p-3">Net</th><th className="p-3">Status</th>
+            <th className="p-3">Commission</th><th className="p-3">Delivery</th><th className="p-3">Service</th>
+            <th className="p-3">Processing</th><th className="p-3">Net</th><th className="p-3">Status</th>
             <th className="p-3">Paid</th><th className="p-3"></th>
           </tr></thead>
           <tbody>
@@ -143,6 +144,9 @@ export default function Settlements() {
                 <td className="p-3 text-xs">{r.period_start} → {r.period_end}</td>
                 <td className="p-3">{fmt(r.gross_sales)}</td>
                 <td className="p-3">{fmt(r.commission_amount)}</td>
+                <td className="p-3">{fmt(r.delivery_fee_total)}</td>
+                <td className="p-3">{fmt(r.service_fee_total)}</td>
+                <td className="p-3">{fmt(r.processing_fee_total)}</td>
                 <td className="p-3 font-semibold">{fmt(r.net_payout)}</td>
                 <td className="p-3"><StatusBadge value={r.status} /></td>
                 <td className="p-3 text-xs">{r.paid_at ? new Date(r.paid_at).toLocaleDateString() : "—"}</td>
