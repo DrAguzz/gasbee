@@ -113,7 +113,7 @@ function MerchantSettlements() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="text-2xl font-bold">Settlements</h1><p className="text-sm text-muted-foreground">Merchant payouts.</p></div>
+        <p className="text-sm text-muted-foreground">Merchant payouts.</p>
         <div className="flex items-center gap-2">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
