@@ -12,6 +12,22 @@ import { toast } from "sonner";
 const fmt = (n: any) => new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR" }).format(Number(n || 0));
 
 export default function Settlements() {
+  return (
+    <div className="space-y-4">
+      <div><h1 className="text-2xl font-bold">Settlements</h1><p className="text-sm text-muted-foreground">Merchant and rider payouts.</p></div>
+      <Tabs defaultValue="merchant">
+        <TabsList>
+          <TabsTrigger value="merchant">Merchant</TabsTrigger>
+          <TabsTrigger value="rider">Rider</TabsTrigger>
+        </TabsList>
+        <TabsContent value="merchant" className="mt-4"><MerchantSettlements /></TabsContent>
+        <TabsContent value="rider" className="mt-4"><RiderSettlementsTab /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function MerchantSettlements() {
   const [rows, setRows] = useState<any[]>([]);
   const [merchants, setMerchants] = useState<any[]>([]);
   const [merchantMap, setMerchantMap] = useState<Record<string, string>>({});
