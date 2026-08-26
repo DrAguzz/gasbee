@@ -23,6 +23,40 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const { data: gwEarly } = await admin
+      .from("payment_gateways")
+      .select("config")
+      .eq("provider", "chip")
+      .maybeSingle();
+    const apiKeyEarly = (((gwEarly?.config ?? {}) as Record<string, string>).api_key
+      || Deno.env.get("CHIP_API_KEY") || "").trim();
+
+    // Top-up purchases (Maybank -> CHIP Collect) are tracked as fund movements.
+    const { data: movement } = await admin
+      .from("fund_movements")
+      .select("id, amount, status")
+      .eq("chip_purchase_id", purchaseId)
+      .maybeSingle();
+
+    if (movement) {
+      if (!apiKeyEarly) return new Response("not configured", { status: 500, headers: corsHeaders });
+      const vres = await fetch(`${CHIP_BASE}/purchases/${purchaseId}/`, {
+        headers: { Authorization: `Bearer ${apiKeyEarly}` },
+      });
+      if (!vres.ok) return new Response("verification failed", { status: 502, headers: corsHeaders });
+      const vpurchase = await vres.json();
+      const vstatus = String(vpurchase?.status ?? "").toLowerCase();
+      if (vpurchase?.reference !== `topup:${movement.id}`) {
+        console.error("chip-webhook: topup reference mismatch");
+        return new Response("reference mismatch", { status: 400, headers: corsHeaders });
+      }
+      const vpaid = vstatus === "paid" || vstatus === "success";
+      await admin.from("fund_movements").update({
+        status: vpaid ? "paid" : (["failed", "error", "cancelled", "expired"].includes(vstatus) ? "failed" : "pending"),
+      }).eq("id", movement.id);
+      return new Response("ok", { headers: corsHeaders });
+    }
+
     // The payment row must already exist (created when we initiated the purchase).
     const { data: payment } = await admin
       .from("payments")
@@ -34,6 +68,7 @@ Deno.serve(async (req) => {
       console.error("chip-webhook: unknown gateway_ref");
       return new Response("unknown purchase", { status: 404, headers: corsHeaders });
     }
+
 
     // Verify server-side with CHIP instead of trusting the posted status.
     const { data: gw } = await admin

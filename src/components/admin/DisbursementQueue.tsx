@@ -29,9 +29,9 @@ export function DisbursementQueue() {
   return (
     <Card className="p-4">
       <div className="mb-3">
-        <p className="font-semibold">Barisan disbursement</p>
+        <p className="font-semibold">Disbursement queue</p>
         <p className="text-xs text-muted-foreground">
-          Settlement yang belum dibayar. Amaun diambil terus daripada net payout settlement.
+          Unpaid settlements. Amounts come directly from each settlement net payout.
         </p>
       </div>
       <Tabs defaultValue="merchant">
@@ -103,7 +103,7 @@ function QueueTable({ kind }: { kind: Kind }) {
     const { data, error } = await supabase.functions.invoke("chip-send-payout", { body });
     setPayingId(null);
     if (error) return toast.error(error.message);
-    if (!data?.ok) { load(); return toast.error(data?.error ?? "Disbursement gagal."); }
+    if (!data?.ok) { load(); return toast.error(data?.error ?? "Disbursement failed."); }
     toast.success(data.message);
     load();
   };
@@ -114,10 +114,10 @@ function QueueTable({ kind }: { kind: Kind }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          {rows.length} settlement belum dibayar · jumlah {fmt(total)}
+          {rows.length} unpaid settlement(s) · total {fmt(total)}
         </p>
         <Button size="sm" variant="outline" onClick={load} disabled={loading}>
-          <RefreshCw className="mr-2 h-4 w-4" />Muat semula
+          <RefreshCw className="mr-2 h-4 w-4" />Refresh
         </Button>
       </div>
 
@@ -126,9 +126,9 @@ function QueueTable({ kind }: { kind: Kind }) {
           <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
               <th className="p-3">{kind === "merchant" ? "Merchant" : "Rider"}</th>
-              <th className="p-3">Tempoh</th>
+              <th className="p-3">Period</th>
               <th className="p-3">Net payout</th>
-              <th className="p-3">Akaun bank</th>
+              <th className="p-3">Bank account</th>
               <th className="p-3">Status</th>
               <th className="p-3"></th>
             </tr>
@@ -146,10 +146,10 @@ function QueueTable({ kind }: { kind: Kind }) {
                       <div className="space-y-1">
                         <p>{r.bank.bank_code} · {r.bank.account_number}</p>
                         <Badge variant={ready ? "secondary" : "destructive"} className="capitalize">
-                          {r.bank.chip_bank_account_id ? (r.bank.status ?? "pending") : "belum daftar CHIP"}
+                          {r.bank.chip_bank_account_id ? (r.bank.status ?? "pending") : "not registered with CHIP"}
                         </Badge>
                       </div>
-                    ) : <span className="text-destructive">Tiada akaun bank</span>}
+                    ) : <span className="text-destructive">No bank account</span>}
                   </td>
                   <td className="p-3">
                     <StatusBadge value={r.status} />
@@ -158,7 +158,7 @@ function QueueTable({ kind }: { kind: Kind }) {
                   <td className="p-3 text-right">
                     <Button size="sm" onClick={() => disburse(r)} disabled={!ready || !!r.instruction_id || payingId === r.id}>
                       <Send className="mr-2 h-4 w-4" />
-                      {payingId === r.id ? "Menghantar…" : r.instruction_id ? "Sudah dihantar" : "Disburse"}
+                      {payingId === r.id ? "Sending…" : r.instruction_id ? "Already sent" : "Disburse"}
                     </Button>
                     {r.payout_error && <p className="mt-1 text-xs text-destructive">{r.payout_error}</p>}
                   </td>
@@ -167,7 +167,7 @@ function QueueTable({ kind }: { kind: Kind }) {
             })}
             {rows.length === 0 && (
               <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">
-                {loading ? "Memuatkan…" : "Tiada settlement menunggu pembayaran."}
+                {loading ? "Loading…" : "No settlements awaiting payment."}
               </td></tr>
             )}
           </tbody>
