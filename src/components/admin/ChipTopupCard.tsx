@@ -20,21 +20,32 @@ export function ChipTopupCard({ onChanged }: { onChanged?: () => void }) {
   const [reference, setReference] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [due, setDue] = useState({ merchant: 0, rider: 0, total: 0 });
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("fund_movements")
-      .select("*")
-      .not("chip_purchase_id", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const [{ data, error }, { data: ms }, { data: rs }] = await Promise.all([
+      supabase
+        .from("fund_movements")
+        .select("*")
+        .not("chip_purchase_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase.from("settlements").select("net_payout").neq("status", "paid"),
+      supabase.from("rider_settlements").select("net_payout").neq("status", "paid"),
+    ]);
     setLoading(false);
     if (error) return toast.error(error.message);
     setRows(data ?? []);
+    const merchant = (ms ?? []).reduce((a: number, s: any) => a + Number(s.net_payout || 0), 0);
+    const rider = (rs ?? []).reduce((a: number, s: any) => a + Number(s.net_payout || 0), 0);
+    const total = Math.round((merchant + rider) * 100) / 100;
+    setDue({ merchant, rider, total });
+    setAmount((prev) => (prev === "" && total > 0 ? total.toFixed(2) : prev));
   };
 
   useEffect(() => { load(); }, []);
+
 
   const generate = async () => {
     const value = Number(amount);
