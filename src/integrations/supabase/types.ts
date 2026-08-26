@@ -425,6 +425,45 @@ export type Database = {
         }
         Relationships: []
       }
+      fund_movements: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          moved_at: string
+          notes: string | null
+          proof_url: string | null
+          reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          direction: string
+          id?: string
+          moved_at?: string
+          notes?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          moved_at?: string
+          notes?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_movements: {
         Row: {
           created_at: string
