@@ -20,21 +20,32 @@ export function ChipTopupCard({ onChanged }: { onChanged?: () => void }) {
   const [reference, setReference] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [due, setDue] = useState({ merchant: 0, rider: 0, total: 0 });
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("fund_movements")
-      .select("*")
-      .not("chip_purchase_id", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const [{ data, error }, { data: ms }, { data: rs }] = await Promise.all([
+      supabase
+        .from("fund_movements")
+        .select("*")
+        .not("chip_purchase_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase.from("settlements").select("net_payout").neq("status", "paid"),
+      supabase.from("rider_settlements").select("net_payout").neq("status", "paid"),
+    ]);
     setLoading(false);
     if (error) return toast.error(error.message);
     setRows(data ?? []);
+    const merchant = (ms ?? []).reduce((a: number, s: any) => a + Number(s.net_payout || 0), 0);
+    const rider = (rs ?? []).reduce((a: number, s: any) => a + Number(s.net_payout || 0), 0);
+    const total = Math.round((merchant + rider) * 100) / 100;
+    setDue({ merchant, rider, total });
+    setAmount((prev) => (prev === "" && total > 0 ? total.toFixed(2) : prev));
   };
 
   useEffect(() => { load(); }, []);
+
 
   const generate = async () => {
     const value = Number(amount);
@@ -75,6 +86,20 @@ export function ChipTopupCard({ onChanged }: { onChanged?: () => void }) {
         </Button>
       </div>
 
+      <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+        <p className="font-medium">Amount payable (net, after platform fees)</p>
+        <p className="text-xs text-muted-foreground">
+          Merchants {fmt(due.merchant)} · Riders {fmt(due.rider)} — these net payouts already exclude commission,
+          delivery, service and processing fees.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-lg font-bold">{fmt(due.total)}</span>
+          <Button size="sm" variant="outline" onClick={() => setAmount(due.total.toFixed(2))} disabled={due.total <= 0}>
+            Use this amount
+          </Button>
+        </div>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
           <Label>Amount (RM)</Label>
@@ -86,6 +111,7 @@ export function ChipTopupCard({ onChanged }: { onChanged?: () => void }) {
         </div>
         <Button onClick={generate} disabled={busy}>{busy ? "Creating…" : "Generate payment link"}</Button>
       </div>
+
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
