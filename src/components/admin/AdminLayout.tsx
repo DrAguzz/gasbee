@@ -52,6 +52,7 @@ const groups: { label: string; items: { to: string; label: string; icon: any }[]
       { to: "/payments", label: "Payments", icon: CreditCard },
       { to: "/payment-gateway", label: "Payment Gateway", icon: CreditCard },
       { to: "/settlements", label: "Settlements", icon: Wallet },
+      { to: "/disbursement", label: "Disbursement", icon: Send },
       { to: "/commissions", label: "Commissions", icon: Percent },
     ],
   },
