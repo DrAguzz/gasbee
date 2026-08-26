@@ -428,6 +428,8 @@ export type Database = {
       fund_movements: {
         Row: {
           amount: number
+          checkout_url: string | null
+          chip_purchase_id: string | null
           created_at: string
           created_by: string | null
           direction: string
@@ -436,10 +438,13 @@ export type Database = {
           notes: string | null
           proof_url: string | null
           reference: string | null
+          status: string
           updated_at: string
         }
         Insert: {
           amount: number
+          checkout_url?: string | null
+          chip_purchase_id?: string | null
           created_at?: string
           created_by?: string | null
           direction: string
@@ -448,10 +453,13 @@ export type Database = {
           notes?: string | null
           proof_url?: string | null
           reference?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
           amount?: number
+          checkout_url?: string | null
+          chip_purchase_id?: string | null
           created_at?: string
           created_by?: string | null
           direction?: string
@@ -460,6 +468,7 @@ export type Database = {
           notes?: string | null
           proof_url?: string | null
           reference?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
