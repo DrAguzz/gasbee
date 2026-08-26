@@ -127,10 +127,10 @@ export default function AdminLayout({ children }: { children?: ReactNode }) {
   const current = allItems.find((i) => i.to === pathname)?.label ?? "Admin";
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-64 shrink-0 md:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 md:flex">
         <SidebarContent />
       </aside>
-      <main className="flex-1 overflow-x-auto">
+      <main className="flex-1 overflow-x-auto md:ml-64">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background px-4 md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
