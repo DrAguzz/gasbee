@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const PRIVATE_BUCKETS = new Set(["rider-docs", "company-docs", "delivery-proofs"]);
+const PRIVATE_BUCKETS = new Set(["rider-docs", "company-docs", "delivery-proofs", "finance-docs"]);
 
 function extractPath(url: string, bucket: string): string | null {
   if (!url) return null;

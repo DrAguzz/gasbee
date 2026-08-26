@@ -23,6 +23,7 @@ import InventoryOverview from "@/pages/admin/InventoryOverview";
 import Payments from "@/pages/admin/Payments";
 import Refunds from "@/pages/admin/Refunds";
 import Settlements from "@/pages/admin/Settlements";
+import Disbursement from "@/pages/admin/Disbursement";
 import Commissions from "@/pages/admin/Commissions";
 import Banners from "@/pages/admin/Banners";
 import Promotions from "@/pages/admin/Promotions";
@@ -138,6 +139,7 @@ const App = () => (
               <Route path="/payments" element={<Payments />} />
               <Route path="/refunds" element={<Refunds />} />
               <Route path="/settlements" element={<Settlements />} />
+              <Route path="/disbursement" element={<Disbursement />} />
               <Route path="/commissions" element={<Commissions />} />
               <Route path="/banners" element={<Banners />} />
               <Route path="/promotions" element={<Promotions />} />
