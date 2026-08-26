@@ -7,11 +7,29 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RiderSettlementsTab } from "@/components/admin/RiderSettlementsTab";
 import { toast } from "sonner";
 
 const fmt = (n: any) => new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR" }).format(Number(n || 0));
 
 export default function Settlements() {
+  return (
+    <div className="space-y-4">
+      <div><h1 className="text-2xl font-bold">Settlements</h1><p className="text-sm text-muted-foreground">Merchant and rider payouts.</p></div>
+      <Tabs defaultValue="merchant">
+        <TabsList>
+          <TabsTrigger value="merchant">Merchant</TabsTrigger>
+          <TabsTrigger value="rider">Rider</TabsTrigger>
+        </TabsList>
+        <TabsContent value="merchant" className="mt-4"><MerchantSettlements /></TabsContent>
+        <TabsContent value="rider" className="mt-4"><RiderSettlementsTab /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function MerchantSettlements() {
   const [rows, setRows] = useState<any[]>([]);
   const [merchants, setMerchants] = useState<any[]>([]);
   const [merchantMap, setMerchantMap] = useState<Record<string, string>>({});
@@ -48,19 +66,25 @@ export default function Settlements() {
   const generate = async () => {
     if (!form.merchant_id || !form.period_start || !form.period_end) return toast.error("All fields required");
     setBusy(true);
-    const { data: orders } = await supabase.from("orders").select("total_amount")
+    const { data: orders } = await supabase.from("orders").select("total_amount,delivery_fee,service_fee,processing_fee")
       .eq("merchant_id", form.merchant_id).eq("payment_status", "paid")
       .gte("created_at", form.period_start).lte("created_at", form.period_end + "T23:59:59");
-    const gross = (orders ?? []).reduce((a, o: any) => a + Number(o.total_amount || 0), 0);
+    const sum = (key: string) => (orders ?? []).reduce((a, o: any) => a + Number(o[key] || 0), 0);
+    const gross = sum("total_amount");
+    const deliveryTotal = sum("delivery_fee");
+    const serviceTotal = sum("service_fee");
+    const processingTotal = sum("processing_fee");
     const m = merchants.find((x) => x.id === form.merchant_id);
     const { data: rate } = await supabase.from("commissions").select("value,type").eq("merchant_id", form.merchant_id).eq("active", true).maybeSingle();
     const { data: defaultRate } = await supabase.from("commissions").select("value,type").eq("is_default", true).eq("active", true).maybeSingle();
     const r = rate ?? defaultRate ?? { value: 10, type: "percent" };
     const commission = r.type === "percent" ? gross * Number(r.value) / 100 : Number(r.value);
-    const net = gross - commission;
+    const net = gross - commission - deliveryTotal - serviceTotal - processingTotal;
     const { error } = await supabase.from("settlements").insert({
       merchant_id: form.merchant_id, period_start: form.period_start, period_end: form.period_end,
-      gross_sales: gross, commission_amount: commission, net_payout: net, status: "pending" as any,
+      gross_sales: gross, commission_amount: commission,
+      delivery_fee_total: deliveryTotal, service_fee_total: serviceTotal, processing_fee_total: processingTotal,
+      net_payout: net, status: "pending" as any,
     });
     setBusy(false);
     if (error) return toast.error(error.message);
@@ -89,7 +113,7 @@ export default function Settlements() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="text-2xl font-bold">Settlements</h1><p className="text-sm text-muted-foreground">Merchant payouts.</p></div>
+        <p className="text-sm text-muted-foreground">Merchant payouts.</p>
         <div className="flex items-center gap-2">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -117,7 +141,7 @@ export default function Settlements() {
                   <div><Label>To</Label><Input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} /></div>
                 </div>
                 <Button className="w-full" onClick={generate} disabled={busy}>{busy ? "Calculating…" : "Generate"}</Button>
-                <p className="text-xs text-muted-foreground">Sums all paid orders in range and applies merchant's commission rate.</p>
+                <p className="text-xs text-muted-foreground">Sums all paid orders in range, applies merchant's commission rate, then deducts delivery, service and processing fees.</p>
               </div>
             </DialogContent>
           </Dialog>
@@ -127,7 +151,8 @@ export default function Settlements() {
         <table className="w-full text-sm">
           <thead className="bg-muted/40"><tr className="text-left text-xs uppercase text-muted-foreground">
             <th className="p-3">Merchant</th><th className="p-3">Period</th><th className="p-3">Gross</th>
-            <th className="p-3">Commission</th><th className="p-3">Net</th><th className="p-3">Status</th>
+            <th className="p-3">Commission</th><th className="p-3">Delivery</th><th className="p-3">Service</th>
+            <th className="p-3">Processing</th><th className="p-3">Net</th><th className="p-3">Status</th>
             <th className="p-3">Paid</th><th className="p-3"></th>
           </tr></thead>
           <tbody>
@@ -137,6 +162,9 @@ export default function Settlements() {
                 <td className="p-3 text-xs">{r.period_start} → {r.period_end}</td>
                 <td className="p-3">{fmt(r.gross_sales)}</td>
                 <td className="p-3">{fmt(r.commission_amount)}</td>
+                <td className="p-3">{fmt(r.delivery_fee_total)}</td>
+                <td className="p-3">{fmt(r.service_fee_total)}</td>
+                <td className="p-3">{fmt(r.processing_fee_total)}</td>
                 <td className="p-3 font-semibold">{fmt(r.net_payout)}</td>
                 <td className="p-3"><StatusBadge value={r.status} /></td>
                 <td className="p-3 text-xs">{r.paid_at ? new Date(r.paid_at).toLocaleDateString() : "—"}</td>
@@ -159,7 +187,7 @@ export default function Settlements() {
 
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No settlements.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">No settlements.</td></tr>}
           </tbody>
         </table>
       </Card>

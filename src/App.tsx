@@ -23,6 +23,7 @@ import InventoryOverview from "@/pages/admin/InventoryOverview";
 import Payments from "@/pages/admin/Payments";
 import Refunds from "@/pages/admin/Refunds";
 import Settlements from "@/pages/admin/Settlements";
+import Disbursement from "@/pages/admin/Disbursement";
 import Commissions from "@/pages/admin/Commissions";
 import Banners from "@/pages/admin/Banners";
 import Promotions from "@/pages/admin/Promotions";
@@ -88,6 +89,7 @@ import RiderActive from "@/pages/rider/RiderActive";
 import RiderHistory from "@/pages/rider/RiderHistory";
 import RiderEarnings from "@/pages/rider/RiderEarnings";
 import RiderProfile from "@/pages/rider/RiderProfile";
+import RiderSettlements from "@/pages/rider/RiderSettlements";
 import RiderNotifications from "@/pages/rider/RiderNotifications";
 import RiderRefundPickups from "@/pages/rider/RiderRefundPickups";
 
@@ -162,6 +164,7 @@ const App = () => (
               <Route path="/payments" element={<Payments />} />
               <Route path="/refunds" element={<Refunds />} />
               <Route path="/settlements" element={<Settlements />} />
+              <Route path="/disbursement" element={<Disbursement />} />
               <Route path="/commissions" element={<Commissions />} />
               <Route path="/banners" element={<Banners />} />
               <Route path="/promotions" element={<Promotions />} />
@@ -239,6 +242,7 @@ const App = () => (
               <Route path="/merchant/rider/active-delivery" element={<RiderActive />} />
               <Route path="/merchant/rider/history" element={<RiderHistory />} />
               <Route path="/merchant/rider/earnings" element={<RiderEarnings />} />
+              <Route path="/merchant/rider/settlements" element={<RiderSettlements />} />
               <Route path="/merchant/rider/profile" element={<RiderProfile />} />
               <Route path="/merchant/rider/notifications" element={<RiderNotifications />} />
               <Route path="/merchant/rider/refund-pickups" element={<RiderRefundPickups />} />

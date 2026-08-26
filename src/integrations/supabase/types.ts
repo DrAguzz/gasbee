@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -422,6 +422,54 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      fund_movements: {
+        Row: {
+          amount: number
+          checkout_url: string | null
+          chip_purchase_id: string | null
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          moved_at: string
+          notes: string | null
+          proof_url: string | null
+          reference: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          checkout_url?: string | null
+          chip_purchase_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction: string
+          id?: string
+          moved_at?: string
+          notes?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          checkout_url?: string | null
+          chip_purchase_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          moved_at?: string
+          notes?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1352,6 +1400,78 @@ export type Database = {
           },
         ]
       }
+      rider_settlements: {
+        Row: {
+          chip_send_instruction_id: number | null
+          commission_amount: number
+          created_at: string
+          deliveries_count: number
+          delivery_fee_total: number
+          id: string
+          net_payout: number
+          notes: string | null
+          paid_at: string | null
+          payout_error: string | null
+          payout_state: string | null
+          period_end: string
+          period_start: string
+          rider_id: string
+          status: Database["public"]["Enums"]["settlement_status"]
+          updated_at: string
+        }
+        Insert: {
+          chip_send_instruction_id?: number | null
+          commission_amount?: number
+          created_at?: string
+          deliveries_count?: number
+          delivery_fee_total?: number
+          id?: string
+          net_payout?: number
+          notes?: string | null
+          paid_at?: string | null
+          payout_error?: string | null
+          payout_state?: string | null
+          period_end: string
+          period_start: string
+          rider_id: string
+          status?: Database["public"]["Enums"]["settlement_status"]
+          updated_at?: string
+        }
+        Update: {
+          chip_send_instruction_id?: number | null
+          commission_amount?: number
+          created_at?: string
+          deliveries_count?: number
+          delivery_fee_total?: number
+          id?: string
+          net_payout?: number
+          notes?: string | null
+          paid_at?: string | null
+          payout_error?: string | null
+          payout_state?: string | null
+          period_end?: string
+          period_start?: string
+          rider_id?: string
+          status?: Database["public"]["Enums"]["settlement_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rider_settlements_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rider_settlements_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       riders: {
         Row: {
           created_at: string
@@ -1438,6 +1558,7 @@ export type Database = {
           chip_send_instruction_id: number | null
           commission_amount: number
           created_at: string
+          delivery_fee_total: number
           gross_sales: number
           id: string
           merchant_id: string
@@ -1448,6 +1569,8 @@ export type Database = {
           payout_state: string | null
           period_end: string
           period_start: string
+          processing_fee_total: number
+          service_fee_total: number
           status: Database["public"]["Enums"]["settlement_status"]
           updated_at: string
         }
@@ -1455,6 +1578,7 @@ export type Database = {
           chip_send_instruction_id?: number | null
           commission_amount?: number
           created_at?: string
+          delivery_fee_total?: number
           gross_sales?: number
           id?: string
           merchant_id: string
@@ -1465,6 +1589,8 @@ export type Database = {
           payout_state?: string | null
           period_end: string
           period_start: string
+          processing_fee_total?: number
+          service_fee_total?: number
           status?: Database["public"]["Enums"]["settlement_status"]
           updated_at?: string
         }
@@ -1472,6 +1598,7 @@ export type Database = {
           chip_send_instruction_id?: number | null
           commission_amount?: number
           created_at?: string
+          delivery_fee_total?: number
           gross_sales?: number
           id?: string
           merchant_id?: string
@@ -1482,6 +1609,8 @@ export type Database = {
           payout_state?: string | null
           period_end?: string
           period_start?: string
+          processing_fee_total?: number
+          service_fee_total?: number
           status?: Database["public"]["Enums"]["settlement_status"]
           updated_at?: string
         }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 
 export default function RiderEarnings() {
   const { user } = useAuth();
@@ -39,6 +40,12 @@ export default function RiderEarnings() {
         <Card className="p-4"><p className="text-xs text-muted-foreground">All-time</p><p className="text-xl font-bold">{fmt(data.total)}</p></Card>
         <Card className="p-4"><p className="text-xs text-muted-foreground">Total deliveries</p><p className="text-xl font-bold">{data.count}</p></Card>
       </div>
+      <Link to="/merchant/rider/settlements">
+        <Card className="p-4 hover:bg-muted/40">
+          <p className="text-sm font-semibold">Settlements &amp; payouts</p>
+          <p className="text-xs text-muted-foreground">View your payout records and bank account.</p>
+        </Card>
+      </Link>
     </div>
   );
 }

@@ -35,6 +35,7 @@ Deno.serve(async (req) => {
           patch.payout_error = `CHIP Send state: ${state}`;
         }
         await admin.from("settlements").update(patch).eq("chip_send_instruction_id", data.id);
+        await admin.from("rider_settlements").update(patch).eq("chip_send_instruction_id", data.id);
       }
     }
 
