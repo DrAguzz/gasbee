@@ -86,6 +86,20 @@ export function ChipTopupCard({ onChanged }: { onChanged?: () => void }) {
         </Button>
       </div>
 
+      <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+        <p className="font-medium">Amount payable (net, after platform fees)</p>
+        <p className="text-xs text-muted-foreground">
+          Merchants {fmt(due.merchant)} · Riders {fmt(due.rider)} — these net payouts already exclude commission,
+          delivery, service and processing fees.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-lg font-bold">{fmt(due.total)}</span>
+          <Button size="sm" variant="outline" onClick={() => setAmount(due.total.toFixed(2))} disabled={due.total <= 0}>
+            Use this amount
+          </Button>
+        </div>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
           <Label>Amount (RM)</Label>
@@ -97,6 +111,7 @@ export function ChipTopupCard({ onChanged }: { onChanged?: () => void }) {
         </div>
         <Button onClick={generate} disabled={busy}>{busy ? "Creating…" : "Generate payment link"}</Button>
       </div>
+
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
