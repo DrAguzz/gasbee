@@ -32,6 +32,8 @@ export default function UserCheckout() {
   const [feeConfig, setFeeConfig] = useState<FeeConfig>(DEFAULT_FEE_CONFIG);
   const [credits, setCredits] = useState<any[]>([]);
   const [useCredit, setUseCredit] = useState(true);
+  const [devMode, setDevMode] = useState({ enabled: false, title: "", message: "", button: "" });
+  const [devWarnOpen, setDevWarnOpen] = useState(false);
 
   useEffect(() => {
     supabase.rpc("get_public_fee_settings").then(({ data }) => {
