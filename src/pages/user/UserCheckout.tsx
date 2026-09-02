@@ -38,8 +38,10 @@ export default function UserCheckout() {
   useEffect(() => {
     supabase.rpc("get_public_fee_settings").then(({ data }) => {
       const m: Record<string, number> = {};
+      const rawM: Record<string, string> = {};
       (data ?? []).forEach((r: any) => {
         const raw = typeof r.value === "string" ? r.value : (r.value?.value ?? r.value);
+        rawM[r.key] = String(raw ?? "");
         const n = Number(raw);
         if (Number.isFinite(n)) m[r.key] = n;
       });
@@ -49,6 +51,17 @@ export default function UserCheckout() {
         deliveryBaseKm: m.delivery_base_km ?? DEFAULT_FEE_CONFIG.deliveryBaseKm,
         deliveryPerKm: m.delivery_per_km ?? DEFAULT_FEE_CONFIG.deliveryPerKm,
         processingFee: m.processing_fee ?? DEFAULT_FEE_CONFIG.processingFee,
+      });
+      const unwrap = (v: unknown): string => {
+        if (typeof v === "string") return v;
+        try { return JSON.parse(JSON.stringify(v)) as string; } catch { return String(v ?? ""); }
+      };
+      const enabled = String(rawM.dev_mode_enabled ?? "false").toLowerCase() === "true";
+      setDevMode({
+        enabled,
+        title: unwrap(rawM.dev_mode_title) || "Mobile App dalam tempoh percubaan",
+        message: unwrap(rawM.dev_mode_message) || "Aplikasi sedang dalam pembangunan semula. Tiada penghantaran akan dilakukan sepanjang tempoh ini.",
+        button: unwrap(rawM.dev_mode_button) || "Faham",
       });
     });
 
