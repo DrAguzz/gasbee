@@ -398,7 +398,23 @@ export default function UserCheckout() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Review again</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setConfirmOpen(false); placeOrder(); }}>Confirm & place order</AlertDialogAction>
+            <AlertDialogAction onClick={() => {
+              setConfirmOpen(false);
+              if (devMode.enabled) setDevWarnOpen(true);
+              else placeOrder();
+            }}>Confirm & place order</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={devWarnOpen} onOpenChange={setDevWarnOpen}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{devMode.title}</AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-line">{devMode.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { setDevWarnOpen(false); placeOrder(); }}>{devMode.button}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
