@@ -43,7 +43,6 @@ export default function DevModeNotice() {
   }, []);
 
   const acknowledge = () => {
-    try { sessionStorage.setItem(SESSION_KEY, "1"); } catch {}
     setOpen(false);
   };
 
