@@ -6,6 +6,7 @@ import { useCart } from "@/hooks/useCart";
 import { Logo } from "@/components/Logo";
 import UserTabBar from "@/components/user/UserTabBar";
 import { BeeIntro } from "@/components/user/BeeIntro";
+import DevModeNotice from "@/components/user/DevModeNotice";
 
 const TOP_LEVEL = ["/user/home", "/user/orders", "/user/notifications", "/user/profile"];
 
@@ -54,6 +55,7 @@ export default function UserLayout() {
       <div className="pb-24 text-center text-[10px] text-muted-foreground py-1">Version 2.0.0</div>
       <UserTabBar />
       {showBee && <BeeIntro onDone={() => setShowBee(false)} />}
+      <DevModeNotice />
     </div>
   );
 }
