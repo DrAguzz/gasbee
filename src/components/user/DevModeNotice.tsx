@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const SESSION_KEY = "gasbee-dev-mode-notice";
+
 
 const unwrap = (v: unknown): string => {
   if (typeof v === "string") return v;
