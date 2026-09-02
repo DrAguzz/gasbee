@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const SESSION_KEY = "gasbee-dev-mode-notice";
+
 
 const unwrap = (v: unknown): string => {
   if (typeof v === "string") return v;
@@ -28,9 +28,6 @@ export default function DevModeNotice() {
   useEffect(() => {
     let active = true;
     (async () => {
-      try {
-        if (sessionStorage.getItem(SESSION_KEY) === "1") return;
-      } catch {}
       const { data } = await supabase.rpc("get_public_fee_settings");
       if (!active || !data) return;
       const m: Record<string, string> = {};
@@ -46,7 +43,6 @@ export default function DevModeNotice() {
   }, []);
 
   const acknowledge = () => {
-    try { sessionStorage.setItem(SESSION_KEY, "1"); } catch {}
     setOpen(false);
   };
 
